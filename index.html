@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>현장 3D — 건축·발굴 시뮬레이터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgba(242,244,240,.94);--panel-solid:#F2F4F0;--ink:#1E3448;--ink2:#56697a;--line:#CBD3D6;
+  --accent:#E8A317;--accent-ink:#2a1d00;--warn:#B4532A;--ok:#2F7D4F;--btn:#E2E7E7;--btn-h:#D2DADC;
+  --sel:#1E3448;--sel-ink:#F2F4F0;--shadow:0 8px 28px rgba(20,35,50,.20);--scrim:rgba(14,26,38,.55);
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --panel:rgba(20,31,42,.93);--panel-solid:#141F2A;--ink:#E4EAEE;--ink2:#9AACBA;--line:#2C3F50;
+    --btn:#203040;--btn-h:#2A3D50;--sel:#E8A317;--sel-ink:#1b1300;--shadow:0 8px 28px rgba(0,0,0,.5);--scrim:rgba(4,8,12,.65);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --panel:rgba(20,31,42,.93);--panel-solid:#141F2A;--ink:#E4EAEE;--ink2:#9AACBA;--line:#2C3F50;
+  --btn:#203040;--btn-h:#2A3D50;--sel:#E8A317;--sel-ink:#1b1300;--shadow:0 8px 28px rgba(0,0,0,.5);--scrim:rgba(4,8,12,.65);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;overflow:hidden;background:#a9bfcd;color:var(--ink);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',system-ui,sans-serif;font-size:14px;line-height:1.45}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+button{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#top{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:stretch;z-index:6;flex-wrap:wrap;pointer-events:none}
+#top>*{pointer-events:auto}
+#brand{padding:7px 14px;display:flex;flex-direction:column;justify-content:center}
+#brand b{font-size:15px;font-weight:700;letter-spacing:-.01em}
+#brand span{font-size:11px;color:var(--ink2)}
+#fund{padding:6px 14px;display:flex;flex-direction:column;justify-content:center;min-width:150px}
+#fund .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+#fund .l,#dayb .l{font-size:11px;color:var(--ink2)}
+#dayb{padding:6px 12px;display:flex;flex-direction:column;justify-content:center;min-width:110px}
+#dayb .v{font-size:14px;font-weight:600}
+#dayb .bar{height:4px;border-radius:2px;background:var(--btn);margin-top:3px;overflow:hidden}
+#dayb .bar i{display:block;height:100%;width:0;background:var(--accent)}
+#modes{display:flex;padding:4px;gap:3px}
+.mbtn{border:0;background:transparent;padding:5px 10px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.2}
+.mbtn small{font-size:10px;color:var(--ink2);font-weight:400}
+.mbtn:hover{background:var(--btn)}
+.mbtn[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink)}
+.mbtn[aria-pressed="true"] small{color:inherit;opacity:.75}
+#acts{margin-left:auto;display:flex;gap:6px;padding:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--btn);padding:6px 10px;border-radius:7px;font-size:13px;cursor:pointer;line-height:1.25}
+.btn:hover{background:var(--btn-h)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:var(--warn)}
+.btn.wide{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+#side{position:absolute;left:10px;top:86px;width:258px;max-height:calc(100% - 156px);overflow:auto;padding:12px;z-index:4}
+#info{position:absolute;right:10px;top:86px;width:288px;max-height:calc(100% - 156px);overflow:auto;padding:12px;z-index:4}
+h3{font-size:12.5px;margin:14px 0 6px;color:var(--ink2);font-weight:600}
+#side>h3:first-child,#info>h3:first-child,#side>div:first-child h3{margin-top:0}
+h4{font-size:15px;margin:0 0 4px;font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.tool{border:1px solid var(--line);background:var(--btn);padding:6px 8px;border-radius:7px;font-size:12.5px;text-align:left;cursor:pointer;line-height:1.25}
+.tool:hover{background:var(--btn-h)}
+.tool .c{display:block;font-size:10.5px;color:var(--ink2);margin-top:1px}
+.tool[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
+.tool[aria-pressed="true"] .c{color:inherit;opacity:.8}
+.tool:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:6px;align-items:center}
+.row.sp{justify-content:space-between}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.meter{height:8px;border-radius:4px;background:var(--btn);overflow:hidden;margin:4px 0}
+.meter i{display:block;height:100%}
+.note{font-size:11.5px;color:var(--ink2);line-height:1.55;margin:6px 0}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--btn);border:1px solid var(--line)}
+.tag.ok{color:var(--ok)} .tag.bad{color:var(--warn)}
+.lvl{font-size:15px;font-weight:700;min-width:84px;text-align:center}
+.sw{width:26px;height:26px;border-radius:6px;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.list{display:flex;flex-direction:column;gap:5px}
+.item{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12.5px;background:var(--btn)}
+.item .t{font-weight:600}
+.item .s{font-size:11px;color:var(--ink2)}
+.keys{font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
+kbd{font-family:inherit;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--btn)}
+select,input[type=range]{width:100%;font-family:inherit}
+select{padding:6px;border-radius:7px;border:1px solid var(--line);background:var(--btn);color:var(--ink)}
+details{font-size:12px;margin-top:10px}
+summary{cursor:pointer;color:var(--ink2)}
+
+#status{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:7px 14px;font-size:13px;z-index:4;max-width:min(760px,calc(100% - 20px));text-align:center}
+#status:empty{display:none}
+#toasts{position:absolute;top:92px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:9;pointer-events:none;align-items:center;width:min(520px,calc(100% - 20px))}
+.toast{padding:8px 14px;font-size:13px;border-left:4px solid var(--accent);animation:tin .25s ease-out}
+.toast.bad{border-left-color:var(--warn)} .toast.good{border-left-color:var(--ok)}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+#tut{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);width:min(540px,calc(100% - 20px));padding:14px 16px;z-index:8;border-top:4px solid var(--accent)}
+#tut .step{font-size:11.5px;color:var(--ink2)}
+#tut p{margin:6px 0 10px;font-size:13.5px;line-height:1.6}
+#tut[hidden]{display:none}
+
+.overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--scrim);padding:16px}
+.overlay[hidden]{display:none}
+#title{background:
+  linear-gradient(rgba(30,52,72,.82),rgba(30,52,72,.9)),
+  repeating-linear-gradient(0deg,transparent 0 39px,rgba(255,255,255,.07) 39px 40px),
+  repeating-linear-gradient(90deg,transparent 0 39px,rgba(255,255,255,.07) 39px 40px);
+  background-color:#1E3448}
+.tcard{max-width:560px;width:100%;color:#EEF2F4}
+.tcard h1{font-size:clamp(34px,6vw,56px);line-height:1.05;margin:0 0 14px;font-weight:700;letter-spacing:-.03em}
+.tcard h1 span{display:block;font-weight:400;font-size:.42em;letter-spacing:0;margin-top:12px;color:#c9d6de}
+.tcard p{color:#c9d6de;font-size:14px;line-height:1.7;max-width:46ch}
+.tcard .row{margin-top:20px;flex-wrap:wrap}
+.tcard .btn{font-size:15px;padding:10px 16px}
+.tcard .btn:not(.primary){background:transparent;color:#EEF2F4;border-color:rgba(255,255,255,.35)}
+.tcard .fine{font-size:12px;color:#9fb2bf;margin-top:22px;line-height:1.6;border-top:1px solid rgba(255,255,255,.15);padding-top:12px}
+.mcard{width:min(680px,100%);max-height:calc(100% - 20px);overflow:auto;padding:18px}
+.mcard h2{margin:0 0 6px;font-size:18px}
+#puz svg{width:100%;height:auto;background:var(--btn);border-radius:8px;border:1px solid var(--line)}
+.cards{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+
+@media (max-width:900px){
+  #side{width:220px;top:auto;bottom:56px;max-height:42%}
+  #info{width:220px;top:auto;bottom:56px;max-height:42%}
+  #brand{display:none}
+  #toasts{top:150px}
+}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv" tabindex="0" aria-label="3D 건축 현장"></canvas>
+  <div id="top">
+    <div id="brand" class="panel"><b>현장 3D</b><span>터파기부터 준공까지</span></div>
+    <div id="fund" class="panel"><span class="l">보유 자금</span><span class="v" id="money">0원</span></div>
+    <div id="dayb" class="panel"><span class="l">경영 일차 · 30초 = 1일</span><span class="v" id="dayv">1일차</span><div class="bar"><i id="dayp"></i></div></div>
+    <nav id="modes" class="panel" aria-label="모드">
+      <button class="mbtn" data-act="mode" data-v="build">건축<small>1</small></button>
+      <button class="mbtn" data-act="mode" data-v="interior">인테리어<small>2</small></button>
+      <button class="mbtn" data-act="mode" data-v="exc">포크레인<small>3</small></button>
+      <button class="mbtn" data-act="mode" data-v="fossil">화석 발굴<small>4</small></button>
+      <button class="mbtn" data-act="mode" data-v="mgmt">부지·박물관 경영<small>5</small></button>
+    </nav>
+    <div id="acts" class="panel">
+      <button class="btn" data-act="undo" title="Ctrl+Z">되돌리기</button>
+      <button class="btn" data-act="save">저장</button>
+      <button class="btn" data-act="loadPrompt">불러오기</button>
+      <button class="btn" data-act="help">조작법</button>
+    </div>
+  </div>
+  <aside id="side" class="panel" aria-label="도구"></aside>
+  <aside id="info" class="panel" aria-label="정보"></aside>
+  <div id="status" class="panel" role="status"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <section id="tut" class="panel" hidden></section>
+  <div id="modal" class="overlay" hidden><div class="mcard panel" id="mcard"></div></div>
+  <div id="title" class="overlay">
+    <div class="tcard">
+      <h1>터를 파고, 짓고, 발굴하라<span>부품 하나씩 조립하는 3D 건축·도시 개발 시뮬레이터</span></h1>
+      <p>기초와 벽, 기둥과 보를 직접 올리고 하중을 계산하세요. 포크레인으로 땅을 파고, 공룡 화석을 붓으로 발굴해 나만의 박물관을 운영합니다.</p>
+      <div class="row">
+        <button class="btn primary" data-act="newGame">새 게임 시작 (튜토리얼)</button>
+        <button class="btn" data-act="loadGame" id="loadBtn" hidden>저장된 게임 이어하기</button>
+      </div>
+      <div class="fine" id="titleFine">게임 데이터는 외부 서버나 AI로 전송되지 않습니다. [저장] 버튼을 누를 때만 이 브라우저의 로컬 저장소(localStorage)에 기록되며, 다른 기기나 브라우저에서는 보이지 않습니다. 하중·구조 계산은 실제 건축 원리를 참고한 교육·오락용 단순화 모델입니다.</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+'use strict';
+// ================= 기본 상수와 유틸 =================
+const CELL=2, LH=3, BASE=0.15, MAXL=14;
+const Y=L=>BASE+L*LH;
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+function won(n){
+  n=Math.round(n);const neg=n<0;n=Math.abs(n);let s;
+  if(n>=1e8){const e=Math.floor(n/1e8),m=Math.round((n%1e8)/1e4);s=e+'억'+(m?' '+m.toLocaleString('ko-KR')+'만':'')+' 원';}
+  else if(n>=1e4){s=(Math.round(n/1e3)/10).toLocaleString('ko-KR')+'만 원';}
+  else s=n.toLocaleString('ko-KR')+'원';
+  return (neg?'-':'')+s;
+}
+function freshState(){return{
+  money:0,day:1,dayT:0,tutorialDone:false,tutStep:0,mode:'build',workLevel:0,
+  tool:'foundation',mat:'concrete',rot:0,stressView:false,cutaway:false,undo:[],
+  excavated:new Set(),bones:[],boneSeq:1,exhibits:[],exSeq:1,uidSeq:1,furnSeq:1,
+  stats:{digs:0,collapses:0,found:0,earned:0},fTool:'place',fItem:'sofa',fCat:'거실',
+  paint:'#e9e2d4',finish:'parquet',digTool:'trowel',selPlot:null,selFurn:null,lastReport:null,lastRes:null
+};}
+let S=freshState();
+
+// ================= 렌더러 / 장면 =================
+const canvas=$('cv');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0xc4d6e2,140,460);
+const camera=new THREE.PerspectiveCamera(46,1,0.1,1400);
+camera.position.set(-6,46,52);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.target.set(0,0,-8);
+controls.mouseButtons={LEFT:null,MIDDLE:THREE.MOUSE.PAN,RIGHT:THREE.MOUSE.ROTATE};
+controls.enableDamping=true;controls.dampingFactor=.12;controls.maxPolarAngle=Math.PI*.485;
+controls.minDistance=3;controls.maxDistance=230;controls.screenSpacePanning=false;
+function resize(){const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+// 하늘
+const sky=new THREE.Mesh(new THREE.SphereGeometry(700,32,16),new THREE.ShaderMaterial({
+  side:THREE.BackSide,depthWrite:false,fog:false,
+  uniforms:{top:{value:new THREE.Color(0x4f86bd)},mid:{value:new THREE.Color(0xc4d6e2)},bot:{value:new THREE.Color(0xe6dfcf)}},
+  vertexShader:'varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform vec3 top;uniform vec3 mid;uniform vec3 bot;varying vec3 vP;void main(){float h=vP.y;vec3 c=h>0.0?mix(mid,top,pow(clamp(h*1.4,0.0,1.0),0.6)):mix(mid,bot,clamp(-h*5.0,0.0,1.0));gl_FragColor=vec4(c,1.0);}'
+}));
+sky.renderOrder=-10;scene.add(sky);
+
+// 조명
+const hemi=new THREE.HemisphereLight(0xe2eefc,0x6b5b40,0.62);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0d8,2.1);
+sun.position.set(70,95,45);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+const sc=sun.shadow.camera;sc.left=-95;sc.right=95;sc.top=95;sc.bottom=-95;sc.near=10;sc.far=300;
+sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.03;
+sun.target.position.set(10,0,-6);scene.add(sun);scene.add(sun.target);
+
+// ================= 절차적 텍스처 =================
+function mkCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h||w;return c}
+function toTex(c,rx=1,ry=1){const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t}
+function speck(g,w,h,n,cols,s0,s1,a=1){g.globalAlpha=a;for(let i=0;i<n;i++){g.fillStyle=cols[(Math.random()*cols.length)|0];const s=rnd(s0,s1);g.fillRect(Math.random()*w,Math.random()*h,s,s)}g.globalAlpha=1}
+const TEX={};
+function makeTextures(){
+  let c,g;
+  // 지면(회색조, 버텍스 색으로 착색)
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#c4c4c4';g.fillRect(0,0,256,256);
+  speck(g,256,256,6000,['#aaaaaa','#d6d6d6','#9c9c9c','#e4e4e4','#b6b6b6'],1,3,.8);
+  for(let i=0;i<1100;i++){g.strokeStyle=Math.random()<.5?'rgba(255,255,255,.28)':'rgba(0,0,0,.2)';g.beginPath();const x=Math.random()*256,y=Math.random()*256;g.moveTo(x,y);g.lineTo(x+rnd(-2,2),y-rnd(3,8));g.stroke()}
+  TEX.ground=toTex(c,110,110);
+  // 흙(발굴지)
+  c=mkCanvas(128);g=c.getContext('2d');g.fillStyle='#bfbfbf';g.fillRect(0,0,128,128);
+  speck(g,128,128,2500,['#a5a5a5','#d0d0d0','#8f8f8f','#e8e8e8'],1,2.5,.9);
+  for(let i=0;i<40;i++){g.fillStyle=`rgba(${rnd(60,120)|0},${rnd(60,110)|0},${rnd(60,100)|0},.6)`;g.beginPath();g.ellipse(Math.random()*128,Math.random()*128,rnd(1.5,4),rnd(1,3),Math.random()*3,0,7);g.fill()}
+  TEX.soil=toTex(c);
+  // 벽돌
+  c=mkCanvas(512);g=c.getContext('2d');g.fillStyle='#b8b0a3';g.fillRect(0,0,512,512);
+  {const rows=36,rh=512/rows,bw=512/8;for(let r=0;r<rows;r++){const off=(r%2)*bw/2;for(let k=-1;k<9;k++){g.fillStyle=`hsl(${rnd(6,20)},${rnd(38,55)}%,${rnd(28,42)}%)`;g.fillRect(k*bw+off+1.6,r*rh+1.6,bw-3.2,rh-3.2)}}}
+  speck(g,512,512,5000,['rgba(0,0,0,.25)','rgba(255,255,255,.15)'],1,2);
+  TEX.brick=toTex(c);
+  // 콘크리트
+  c=mkCanvas(512);g=c.getContext('2d');g.fillStyle='#aeaca6';g.fillRect(0,0,512,512);
+  speck(g,512,512,14000,['#9d9b95','#bdbbb5','#a4a29c','#c6c4be','#8f8d88'],1,3,.7);
+  g.strokeStyle='rgba(60,60,60,.18)';g.lineWidth=2;for(let y=128;y<512;y+=128){g.beginPath();g.moveTo(0,y);g.lineTo(512,y);g.stroke()}
+  g.fillStyle='rgba(50,50,50,.35)';for(let x=64;x<512;x+=128)for(let y=64;y<512;y+=128){g.beginPath();g.arc(x,y,3.5,0,7);g.fill()}
+  TEX.concrete=toTex(c);
+  // 목재
+  c=mkCanvas(512);g=c.getContext('2d');
+  for(let p=0;p<6;p++){const x=p*512/6;g.fillStyle=`hsl(${rnd(26,34)},${rnd(38,50)}%,${rnd(40,52)}%)`;g.fillRect(x,0,512/6,512);
+    for(let i=0;i<26;i++){g.strokeStyle=`rgba(70,40,15,${rnd(.08,.25)})`;g.lineWidth=rnd(.6,2);g.beginPath();const bx=x+rnd(3,80);g.moveTo(bx,0);for(let y=0;y<=512;y+=32)g.lineTo(bx+Math.sin(y*.02+i)*rnd(1,4),y);g.stroke()}
+    g.fillStyle='rgba(40,20,5,.45)';g.fillRect(x,0,1.6,512)}
+  TEX.wood=toTex(c);
+  // 철골/금속 패널
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#7c8891';g.fillRect(0,0,256,256);
+  speck(g,256,256,3000,['#717d86','#86929b','#6a757e'],1,2,.6);
+  g.strokeStyle='rgba(30,40,50,.5)';g.lineWidth=2;g.strokeRect(1,1,254,254);g.beginPath();g.moveTo(128,0);g.lineTo(128,256);g.stroke();
+  g.fillStyle='rgba(30,35,40,.55)';for(let i=8;i<256;i+=24){g.beginPath();g.arc(8,i,2,0,7);g.arc(248,i,2,0,7);g.fill()}
+  TEX.steel=toTex(c);
+  // 페인트/벽지 바탕
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#f4f4f4';g.fillRect(0,0,256,256);
+  speck(g,256,256,4000,['#e6e6e6','#ffffff','#ececec'],1,2,.8);
+  TEX.plaster=toTex(c);
+  // 원목 마루
+  c=mkCanvas(512);g=c.getContext('2d');
+  for(let r=0;r<16;r++){let x=-rnd(0,200);while(x<512){const w=rnd(120,220);g.fillStyle=`hsl(${rnd(24,32)},${rnd(45,58)}%,${rnd(36,48)}%)`;g.fillRect(x,r*32,w,32);g.strokeStyle='rgba(40,20,5,.5)';g.strokeRect(x+.5,r*32+.5,w,32);
+    for(let i=0;i<5;i++){g.strokeStyle='rgba(60,30,10,.15)';g.beginPath();const yy=r*32+rnd(4,28);g.moveTo(x,yy);g.bezierCurveTo(x+w*.3,yy+rnd(-3,3),x+w*.6,yy+rnd(-3,3),x+w,yy);g.stroke()}x+=w}}
+  TEX.parquet=toTex(c);
+  // 대리석
+  c=mkCanvas(512);g=c.getContext('2d');g.fillStyle='#eceae6';g.fillRect(0,0,512,512);speck(g,512,512,3000,['#e2e0dc','#f6f5f2'],2,6,.6);
+  for(let i=0;i<14;i++){g.strokeStyle=`rgba(110,110,120,${rnd(.15,.4)})`;g.lineWidth=rnd(.5,2.2);g.beginPath();let x=rnd(0,512),y=0;g.moveTo(x,y);while(y<512){x+=rnd(-30,30);y+=rnd(20,60);g.lineTo(x,y)}g.stroke()}
+  g.strokeStyle='rgba(120,120,120,.35)';g.lineWidth=1.5;g.strokeRect(0,0,256,256);g.strokeRect(256,256,256,256);g.strokeRect(256,0,256,256);g.strokeRect(0,256,256,256);
+  TEX.marble=toTex(c);
+  // 타일
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#9aa3a6';g.fillRect(0,0,256,256);
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){g.fillStyle=`hsl(195,${rnd(5,12)}%,${rnd(86,93)}%)`;g.fillRect(i*32+1.5,j*32+1.5,29,29)}
+  TEX.tile=toTex(c);
+  // 카펫
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#55657a';g.fillRect(0,0,256,256);speck(g,256,256,16000,['#4a596c','#62738a','#506074'],1,2,.9);
+  TEX.carpet=toTex(c);
+  // 지붕 기와(회색조, 색으로 착색)
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#8e8e8e';g.fillRect(0,0,256,256);
+  for(let r=0;r<8;r++)for(let k=-1;k<9;k++){const x=k*32+(r%2)*16,y=r*32;const v=rnd(175,225)|0;g.fillStyle=`rgb(${v},${v},${v})`;g.beginPath();g.moveTo(x+1,y);g.lineTo(x+31,y);g.lineTo(x+31,y+24);g.quadraticCurveTo(x+16,y+33,x+1,y+24);g.fill();g.strokeStyle='rgba(0,0,0,.25)';g.stroke()}
+  TEX.roof=toTex(c);
+  // 아스팔트
+  c=mkCanvas(256);g=c.getContext('2d');g.fillStyle='#46484b';g.fillRect(0,0,256,256);speck(g,256,256,9000,['#3a3c3f','#55575a','#2f3134','#626468'],1,2.5,.8);
+  TEX.asphalt=toTex(c,1,1);
+  // 화석 뼈
+  c=mkCanvas(128);g=c.getContext('2d');g.fillStyle='#d2c3a3';g.fillRect(0,0,128,128);speck(g,128,128,2600,['#b8a684','#e1d4b8','#a08c68','#c8b690'],1,3,.8);
+  for(let i=0;i<60;i++){g.fillStyle='rgba(80,60,40,.35)';g.beginPath();g.arc(Math.random()*128,Math.random()*128,rnd(.5,1.5),0,7);g.fill()}
+  TEX.bone=toTex(c);
+  // 무한궤도
+  c=mkCanvas(128);g=c.getContext('2d');g.fillStyle='#262626';g.fillRect(0,0,128,128);for(let x=0;x<128;x+=16){g.fillStyle='#3d3d3d';g.fillRect(x+2,0,9,128)}
+  TEX.track=toTex(c,4,1);
+}
+makeTextures();
+
+// ================= 재질 =================
+const matCache=new Map();
+function M(key,f){let m=matCache.get(key);if(!m){m=f();matCache.set(key,m)}return m}
+function std(hex,rough=.8,metal=0,extra){return new THREE.MeshStandardMaterial(Object.assign({color:hex,roughness:rough,metalness:metal},extra||{}))}
+function col(hex,rough=.8,metal=0){return M('c'+hex+'|'+rough+'|'+metal,()=>std(hex,rough,metal))}
+const MATS={
+  wood:{n:'목재',d:.6,s:1.0,k:1.0,sw:'#a7774a'},
+  brick:{n:'벽돌',d:1.8,s:1.6,k:1.4,sw:'#9c4a33'},
+  concrete:{n:'콘크리트',d:2.4,s:3.0,k:1.8,sw:'#a6a49e'},
+  steel:{n:'철골',d:1.0,s:5.0,k:2.6,sw:'#6f7d88'},
+  glass:{n:'강화유리',d:.9,s:.7,k:2.2,sw:'#8fc3d8'},
+};
+function glassMat(){return M('glass',()=>std(0x9fcbe0,.06,.1,{transparent:true,opacity:.32,depthWrite:false,envMapIntensity:1}))}
+function baseMat(m){
+  if(m==='glass')return glassMat();
+  return M('base|'+m,()=>{
+    if(m==='wood')return std(0xffffff,.78,0,{map:TEX.wood});
+    if(m==='brick')return std(0xffffff,.92,0,{map:TEX.brick});
+    if(m==='concrete')return std(0xffffff,.95,0,{map:TEX.concrete});
+    if(m==='steel')return std(0xffffff,.42,.55,{map:TEX.steel});
+  });
+}
+function paintMat(c){return M('paint|'+c,()=>std(c,.9,0,{map:TEX.plaster}))}
+const FINISH={
+  parquet:{n:'원목 마루',cost:80000},marble:{n:'대리석',cost:150000},tile:{n:'타일',cost:70000},carpet:{n:'카펫',cost:60000},
+};
+function finishMat(f){return M('fin|'+f,()=>std(0xffffff,f==='marble'?.25:f==='tile'?.35:f==='carpet'?1:.55,0,{map:TEX[f]}))}
+const ROOFCOL={wood:0x7a5c3e,brick:0xa04b33,concrete:0x6c7277,steel:0x4f6c7c,glass:0x6c7277};
+function roofMat(m){return M('roof|'+m,()=>std(ROOFCOL[m],.75,m==='steel'?.4:0,{map:TEX.roof}))}
+function flatRoofMat(){return M('flatroof',()=>std(0x5d6164,.95,0,{map:TEX.concrete}))}
+function boneMat(){return M('bone',()=>std(0xb39a74,.86,0,{map:TEX.bone}))}
+function boneSiteMat(){return M('boneSite',()=>std(0x9b7e57,.9,0,{map:TEX.bone}))}
+const geoCache=new Map();
+function boxGeo(w,h,d){const k=w.toFixed(3)+'|'+h.toFixed(3)+'|'+d.toFixed(3);let g=geoCache.get(k);if(!g){g=new THREE.BoxGeometry(w,h,d);geoCache.set(k,g)}return g}
+const UNIT_BOX=new THREE.BoxGeometry(1,1,1), UNIT_SPH=new THREE.SphereGeometry(1,12,8), UNIT_CYL=new THREE.CylinderGeometry(1,1,1,12);
+function addBox(g,w,h,d,x,y,z,mat){const m=new THREE.Mesh(boxGeo(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m}
+
+// ================= 지형 =================
+const TER={size:300,seg:240,cx:22,cz:-8};TER.step=TER.size/TER.seg;const TN=TER.seg+1;
+const terrH=new Float32Array(TN*TN), terrH0=new Float32Array(TN*TN);
+const FLAT={x0:-58,x1:100,z0:-56,z1:42};
+const SITE={x0:66,z0:-2,nx:20,nz:14,cs:.5,bottom:-2.6,floor:-2.3};
+SITE.x1=SITE.x0+SITE.nx*SITE.cs;SITE.z1=SITE.z0+SITE.nz*SITE.cs;
+const ROADS=[
+  {x0:-46,x1:104,z0:-15.5,z1:-8.5},{x0:-27.3,x1:-22.7,z0:-44,z1:-15.5},{x0:-1.6,x1:3.6,z0:-44,z1:-15.5},
+  {x0:-7.4,x1:-2.6,z0:-8.5,z1:28},{x0:14.6,x1:19.4,z0:-8.5,z1:28},{x0:54,x1:59,z0:-8.5,z1:12}
+];
+const inRect=(x,z,r,m=0)=>x>=r.x0-m&&x<=r.x1+m&&z>=r.z0-m&&z<=r.z1+m;
+function onRoad(x,z){return ROADS.some(r=>inRect(x,z,r))}
+function tWorld(i,j){return[TER.cx-TER.size/2+j*TER.step,TER.cz-TER.size/2+i*TER.step]}
+function groundAt(x,z){
+  let fj=(x-(TER.cx-TER.size/2))/TER.step,fi=(z-(TER.cz-TER.size/2))/TER.step;
+  fj=clamp(fj,0,TER.seg-.0001);fi=clamp(fi,0,TER.seg-.0001);
+  const j=Math.floor(fj),i=Math.floor(fi),tx=fj-j,tz=fi-i;
+  const a=terrH[i*TN+j],b=terrH[i*TN+j+1],c=terrH[(i+1)*TN+j],d=terrH[(i+1)*TN+j+1];
+  return (a*(1-tx)+b*tx)*(1-tz)+(c*(1-tx)+d*tx)*tz;
+}
+let terrGeo,terrMesh;
+const C_GRASS=new THREE.Color(0x6f8f45).convertSRGBToLinear(),C_GRASS2=new THREE.Color(0x8a9b4f).convertSRGBToLinear(),
+  C_LOT=new THREE.Color(0xa59a85).convertSRGBToLinear(),C_DIRT=new THREE.Color(0x7a5a3c).convertSRGBToLinear(),C_DIRT2=new THREE.Color(0x5e432b).convertSRGBToLinear();
+function initTerrain(){
+  for(let i=0;i<TN;i++)for(let j=0;j<TN;j++){
+    const [x,z]=tWorld(i,j);
+    const dx=Math.max(FLAT.x0-x,0,x-FLAT.x1),dz=Math.max(FLAT.z0-z,0,z-FLAT.z1);const d=Math.hypot(dx,dz);
+    const n=(Math.sin(x*.045)+Math.sin(z*.06+1.3)+Math.sin((x+z)*.025+.4)+1.5)/4.5;
+    let h=d>0?Math.pow(Math.min(d/45,1),1.6)*(3+12*Math.max(0,n)):0;
+    h+=Math.sin(x*.21)*Math.sin(z*.17)*.04;
+    if(x>=SITE.x0+.3&&x<=SITE.x1-.3&&z>=SITE.z0+.3&&z<=SITE.z1-.3)h=SITE.bottom;
+    terrH[i*TN+j]=h;terrH0[i*TN+j]=h;
+  }
+  terrGeo=new THREE.PlaneGeometry(TER.size,TER.size,TER.seg,TER.seg);terrGeo.rotateX(-Math.PI/2);terrGeo.translate(TER.cx,0,TER.cz);
+  terrGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(TN*TN*3),3));
+  refreshTerrain(0,TER.seg,0,TER.seg);
+  terrMesh=new THREE.Mesh(terrGeo,new THREE.MeshStandardMaterial({map:TEX.ground,vertexColors:true,roughness:.97}));
+  terrMesh.receiveShadow=true;terrMesh.name='terrain';scene.add(terrMesh);
+}
+function plotAtXZ(x,z){for(const p of PLOTS){if(x>=p.x0*CELL&&x<=(p.x0+p.w)*CELL&&z>=p.z0*CELL&&z<=(p.z0+p.h)*CELL)return p}return null}
+function refreshTerrain(i0,i1,j0,j1){
+  const pos=terrGeo.attributes.position,colA=terrGeo.attributes.color;const c=new THREE.Color();
+  i0=clamp(i0,0,TER.seg);i1=clamp(i1,0,TER.seg);j0=clamp(j0,0,TER.seg);j1=clamp(j1,0,TER.seg);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){
+    const k=i*TN+j,h=terrH[k];pos.setY(k,h);
+    const [x,z]=tWorld(i,j);const dug=terrH0[k]-h,fill=h-terrH0[k];
+    if(dug>.06||fill>.06){c.copy(C_DIRT).lerp(C_DIRT2,clamp(dug/3,0,1))}
+    else if(plotAtXZ(x,z)){c.copy(C_LOT)}
+    else{const n=(Math.sin(x*.3)*Math.sin(z*.27)+1)/2;c.copy(C_GRASS).lerp(C_GRASS2,n*.7)}
+    colA.setXYZ(k,c.r,c.g,c.b);
+  }
+  pos.needsUpdate=true;colA.needsUpdate=true;terrGeo.computeVertexNormals();
+}
+function terrIJ(x,z){return[Math.round((z-(TER.cz-TER.size/2))/TER.step),Math.round((x-(TER.cx-TER.size/2))/TER.step)]}
+function digTerrain(x,z,amount,radius){
+  const [ci,cj]=terrIJ(x,z);const r=Math.ceil(radius/TER.step)+1;let vol=0;
+  for(let i=ci-r;i<=ci+r;i++)for(let j=cj-r;j<=cj+r;j++){
+    if(i<0||j<0||i>TER.seg||j>TER.seg)continue;const [wx,wz]=tWorld(i,j);
+    if(inRect(wx,wz,SITE,.8))continue;
+    const d=Math.hypot(wx-x,wz-z);if(d>radius)continue;const f=Math.cos(d/radius*Math.PI/2);
+    const k=i*TN+j;const nh=Math.max(terrH[k]-amount*f,terrH0[k]-6);vol+=terrH[k]-nh;terrH[k]=nh;
+  }
+  refreshTerrain(ci-r,ci+r,cj-r,cj+r);markExcavated(x,z,radius);return vol;
+}
+function raiseTerrain(x,z,amount,radius){
+  const [ci,cj]=terrIJ(x,z);const r=Math.ceil(radius/TER.step)+1;
+  for(let i=ci-r;i<=ci+r;i++)for(let j=cj-r;j<=cj+r;j++){
+    if(i<0||j<0||i>TER.seg||j>TER.seg)continue;const [wx,wz]=tWorld(i,j);
+    if(inRect(wx,wz,SITE,.8))continue;
+    const d=Math.hypot(wx-x,wz-z);if(d>radius)continue;const f=Math.cos(d/radius*Math.PI/2);
+    const k=i*TN+j;terrH[k]=Math.min(terrH[k]+amount*f,terrH0[k]+4);
+  }
+  refreshTerrain(ci-r,ci+r,cj-r,cj+r);
+}
+function markExcavated(x,z,r){
+  for(let cx=Math.floor((x-r)/CELL);cx<=Math.floor((x+r)/CELL);cx++)for(let cz=Math.floor((z-r)/CELL);cz<=Math.floor((z+r)/CELL);cz++){
+    const p=plotAtCell(cx,cz);if(!p)continue;
+    if(groundAt(cx*CELL+1,cz*CELL+1)<-.35&&!S.excavated.has(cx+','+cz)){S.excavated.add(cx+','+cz);
+      const f=elems.get(`H:${cx},${cz},0`);if(f)S.structDirty=true;}
+  }
+}
+
+// ================= 부지 =================
+const PLOTS=[
+  {id:'A',name:'연습 주택 부지',x0:-20,z0:-20,w:6,h:6,price:8e6},
+  {id:'B',name:'중형 주택 부지',x0:-11,z0:-20,w:10,h:10,price:18e6},
+  {id:'C',name:'상업 부지',x0:2,z0:-20,w:12,h:12,price:30e6},
+  {id:'D',name:'대형 공공 부지',x0:-20,z0:-4,w:16,h:16,price:55e6},
+  {id:'E',name:'랜드마크 부지',x0:-1,z0:-4,w:8,h:8,price:40e6},
+  {id:'F',name:'박물관 부지',x0:10,z0:-4,w:14,h:14,price:35e6},
+];
+PLOTS.forEach(p=>{p.owned=false;p.purpose='none';p.ticket=12000;p.vis=null});
+function plotById(id){return PLOTS.find(p=>p.id===id)}
+function plotAtCell(cx,cz){for(const p of PLOTS){if(cx>=p.x0&&cx<p.x0+p.w&&cz>=p.z0&&cz<p.z0+p.h)return p}return null}
+function plotCenter(p){return V3((p.x0+p.w/2)*CELL,0,(p.z0+p.h/2)*CELL)}
+function labelTexture(lines,bg='rgba(30,52,72,.88)',fg='#fff'){
+  const c=mkCanvas(512,160),g=c.getContext('2d');g.fillStyle=bg;
+  const r=24;g.beginPath();g.moveTo(r,0);g.arcTo(512,0,512,160,r);g.arcTo(512,160,0,160,r);g.arcTo(0,160,0,0,r);g.arcTo(0,0,512,0,r);g.fill();
+  g.fillStyle=fg;g.textAlign='center';g.font='700 46px "IBM Plex Sans KR","Malgun Gothic",sans-serif';g.fillText(lines[0],256,68);
+  if(lines[1]){g.font='500 34px "IBM Plex Sans KR","Malgun Gothic",sans-serif';g.globalAlpha=.85;g.fillText(lines[1],256,122)}
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;
+}
+function plotVisual(p){
+  if(p.vis){scene.remove(p.vis);p.vis.traverse(o=>{if(o.material&&o.material.map&&o.isSprite)o.material.map.dispose()})}
+  const g=new THREE.Group();const x0=p.x0*CELL,z0=p.z0*CELL,x1=(p.x0+p.w)*CELL,z1=(p.z0+p.h)*CELL;
+  const pts=[V3(x0,.06,z0),V3(x1,.06,z0),V3(x1,.06,z1),V3(x0,.06,z1),V3(x0,.06,z0)];
+  const lg=new THREE.BufferGeometry().setFromPoints(pts);
+  const line=new THREE.Line(lg,p.owned?new THREE.LineBasicMaterial({color:0x2f7dd1}):new THREE.LineDashedMaterial({color:0xE8A317,dashSize:1.2,gapSize:.8}));
+  if(!p.owned)line.computeLineDistances();g.add(line);
+  for(const [x,z] of [[x0,z0],[x1,z0],[x1,z1],[x0,z1]]){
+    addBox(g,.12,1.2,.12,x,.6,z,col(0xb08a5a,.9));addBox(g,.14,.18,.14,x,1.05,z,col(p.owned?0x2f7dd1:0xd8402a,.6));
+  }
+  const pur=PURPOSES[p.purpose];
+  const lines=p.owned?[p.name,pur&&p.purpose!=='none'?pur.n:'소유 중']:[p.name,'매물 '+won(p.price)];
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(lines,p.owned?'rgba(30,70,120,.88)':'rgba(30,52,72,.88)'),depthTest:true,transparent:true}));
+  sp.scale.set(7,2.2,1);sp.position.set(x0+3.6,4.2,z0-.2);g.add(sp);
+  p.vis=g;scene.add(g);
+}
+
+// ================= 주변 환경 =================
+function initEnvironment(){
+  for(const r of ROADS){
+    const w=r.x1-r.x0,d=r.z1-r.z0;const t=TEX.asphalt.clone();t.needsUpdate=true;t.repeat.set(w/6,d/6);
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),std(0xffffff,.95,0,{map:t}));m.rotation.x=-Math.PI/2;m.position.set((r.x0+r.x1)/2,.03,(r.z0+r.z1)/2);m.receiveShadow=true;scene.add(m);
+    const along=w>d;const len=along?w:d;
+    for(let s=1.5;s<len-1;s+=4){const dash=new THREE.Mesh(boxGeo(along?2:.15,.01,along?.15:2),col(0xe8e2c8,.7));
+      dash.position.set(along?r.x0+s:(r.x0+r.x1)/2,.045,along?(r.z0+r.z1)/2:r.z0+s);scene.add(dash)}
+  }
+  // 나무
+  const trunks=[],tops=[];
+  for(let k=0;k<420&&tops.length<190;k++){
+    const x=rnd(-140,170),z=rnd(-150,130);
+    if(inRect(x,z,FLAT,-6)){if(Math.random()<.75)continue}
+    if(plotAtXZ(x,z)||PLOTS.some(p=>inRect(x,z,{x0:p.x0*CELL,x1:(p.x0+p.w)*CELL,z0:p.z0*CELL,z1:(p.z0+p.h)*CELL},3)))continue;
+    if(onRoad(x,z)||ROADS.some(r=>inRect(x,z,r,2.5))||inRect(x,z,SITE,7)||inRect(x,z,{x0:44,x1:64,z0:-20,z1:4}))continue;
+    const s=rnd(.8,1.5);trunks.push([x,groundAt(x,z),z,s]);tops.push([x,groundAt(x,z),z,s]);
+  }
+  const tg=new THREE.CylinderGeometry(.18,.28,2.4,6);tg.translate(0,1.2,0);
+  const fg=new THREE.IcosahedronGeometry(1.6,1);fg.translate(0,3.6,0);
+  const ti=new THREE.InstancedMesh(tg,col(0x5b4330,.95),trunks.length),fi=new THREE.InstancedMesh(fg,std(0x4d6b33,.92,0,{flatShading:true}),tops.length);
+  const mm=new THREE.Matrix4(),q=new THREE.Quaternion();const cc=new THREE.Color();
+  trunks.forEach((t,i)=>{mm.compose(V3(t[0],t[1],t[2]),q.setFromAxisAngle(V3(0,1,0),Math.random()*6),V3(t[3],t[3],t[3]));ti.setMatrixAt(i,mm);
+    mm.compose(V3(t[0],t[1],t[2]),q,V3(t[3]*rnd(.85,1.2),t[3]*rnd(.9,1.3),t[3]*rnd(.85,1.2)));fi.setMatrixAt(i,mm);fi.setColorAt(i,cc.setHSL(rnd(.22,.3),rnd(.35,.5),rnd(.22,.32)))});
+  ti.castShadow=fi.castShadow=true;fi.receiveShadow=true;ti.frustumCulled=fi.frustumCulled=false;scene.add(ti);scene.add(fi);
+  // 원경 산
+  for(let i=0;i<16;i++){const a=i/16*Math.PI*2+rnd(-.1,.1),r=rnd(250,330);const h=rnd(40,90);
+    const m=new THREE.Mesh(new THREE.ConeGeometry(rnd(60,110),h,7),std(0x6d8496,1,0,{flatShading:true}));m.position.set(TER.cx+Math.cos(a)*r,h/2-6,TER.cz+Math.sin(a)*r);scene.add(m)}
+  // 현장 사무소 컨테이너
+  const off=new THREE.Group();addBox(off,6,2.6,2.4,0,1.3,0,col(0x2f6e8f,.6,.3));addBox(off,1.2,1,.05,-1.2,1.6,1.22,glassMat());addBox(off,1.2,1,.05,1.4,1.6,1.22,glassMat());addBox(off,.9,2,.05,0,1,1.22,col(0x24485c,.6,.3));
+  off.position.set(50,0,-4.5);off.rotation.y=-.1;scene.add(off);
+  // 발굴지 테두리 판자와 격자 줄
+  const pl=col(0x8a6a44,.9);const W=SITE.x1-SITE.x0,D=SITE.z1-SITE.z0,cx=(SITE.x0+SITE.x1)/2,cz=(SITE.z0+SITE.z1)/2;
+  addBox(scene,W+2.4,.25,1.2,cx,-.02,SITE.z0-.6,pl);addBox(scene,W+2.4,.25,1.2,cx,-.02,SITE.z1+.6,pl);
+  addBox(scene,1.2,.25,D,SITE.x0-.6,-.02,cz,pl);addBox(scene,1.2,.25,D,SITE.x1+.6,-.02,cz,pl);
+  const lp=[];for(let x=SITE.x0;x<=SITE.x1+.01;x+=1){lp.push(V3(x,.14,SITE.z0),V3(x,.14,SITE.z1))}for(let z=SITE.z0;z<=SITE.z1+.01;z+=1){lp.push(V3(SITE.x0,.14,z),V3(SITE.x1,.14,z))}
+  scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lp),new THREE.LineBasicMaterial({color:0xf3efe2,transparent:true,opacity:.75})));
+  for(const [x,z] of [[SITE.x0-1.3,SITE.z0-1.3],[SITE.x1+1.3,SITE.z0-1.3],[SITE.x1+1.3,SITE.z1+1.3],[SITE.x0-1.3,SITE.z1+1.3]])addBox(scene,.15,1.1,.15,x,.55,z,col(0xd8402a,.6));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(['화석 발굴지','붓으로 조심스럽게'],'rgba(120,80,30,.9)')}));sp.scale.set(6,1.9,1);sp.position.set(cx,3.4,SITE.z0-1.6);scene.add(sp);
+}
+
+// ================= 건축 부재 =================
+const ET={
+  foundation:{n:'기초',cat:'H',w:4,c:30,cost:300000,minL:0,maxL:0,d:'지면 위 첫 부재. 모든 하중을 땅으로 보냅니다. 포크레인으로 터파기한 칸에 놓으면 지지력 +50%'},
+  wall:{n:'벽',cat:'W',w:3,c:18,cost:300000,minL:0,d:'칸 가장자리에 세웁니다. 위층 바닥과 벽을 받칩니다'},
+  window:{n:'창문 벽',cat:'W',w:2.4,c:12,cost:500000,minL:0,d:'채광용. 일반 벽보다 약합니다'},
+  door:{n:'문 벽',cat:'W',w:2.2,c:12,cost:450000,minL:0,d:'출입구. 일반 벽보다 약합니다'},
+  column:{n:'기둥',cat:'C',w:1,c:25,cost:200000,minL:0,d:'칸 중앙에 세웁니다. 가볍고 강합니다'},
+  beam:{n:'보',cat:'B',w:.8,c:15,cost:250000,minL:1,d:'기둥·벽 위에 걸쳐, 주변 4칸 바닥의 하중까지 모읍니다'},
+  floor:{n:'바닥판',cat:'H',w:2,c:10,cost:400000,minL:1,d:'아래층 벽·기둥 또는 보 위에 얹는 슬래브'},
+  stairs:{n:'계단',cat:'S',w:2,c:8,cost:800000,minL:0,rot:true,d:'바닥 위에 놓습니다. R로 방향 전환'},
+  roof:{n:'평지붕',cat:'H',w:1.2,c:6,cost:350000,minL:1,d:'꼭대기를 덮습니다. 위에 벽을 세울 수 없습니다'},
+  proof:{n:'경사 지붕',cat:'H',w:1.5,c:6,cost:450000,minL:1,rot:true,d:'R로 경사 방향 전환. 두 줄을 마주 보게 놓으면 박공지붕'},
+};
+const ET_ORDER=['foundation','wall','window','door','column','beam','floor','stairs','roof','proof'];
+const elems=new Map();
+let pickMeshes=[],hMeshes=[];
+function slotKeyOf(e){const c=ET[e.type].cat;return c==='W'?`W:${e.dir}:${e.x},${e.z},${e.L}`:`${c}:${e.x},${e.z},${e.L}`}
+function elemCells(e){if(ET[e.type].cat==='W')return e.dir==='x'?[[e.x,e.z-1],[e.x,e.z]]:[[e.x-1,e.z],[e.x,e.z]];return[[e.x,e.z]]}
+function elemPlot(e){for(const [x,z] of elemCells(e)){const p=plotAtCell(x,z);if(p&&p.owned)return p}return null}
+function eWeight(e){return ET[e.type].w*MATS[e.mat].d}
+function eCap(e){let c=ET[e.type].c*MATS[e.mat].s;if(e.type==='foundation'&&S.excavated.has(e.x+','+e.z))c*=1.5;return c}
+function eCost(type,mat){return Math.round(ET[type].cost*MATS[mat].k/10000)*10000}
+function levelName(L){return(L+1)+'층'}
+function elemLabel(e){return `${levelName(e.L)} ${ET[e.type].n}(${MATS[e.mat].n})`}
+
+// ---- 하중 경로 ----
+const gH=(idx,x,z,L)=>idx.get(`H:${x},${z},${L}`),gB=(idx,x,z,L)=>idx.get(`B:${x},${z},${L}`),gC=(idx,x,z,L)=>idx.get(`C:${x},${z},${L}`),gW=(idx,d,x,z,L)=>idx.get(`W:${d}:${x},${z},${L}`);
+const isSupportH=h=>h&&(h.type==='foundation'||h.type==='floor');
+function cellVerticals(idx,x,z,L){const r=[];const c=gC(idx,x,z,L);if(c)r.push(c);
+  for(const w of [gW(idx,'x',x,z,L),gW(idx,'x',x,z+1,L),gW(idx,'z',x,z,L),gW(idx,'z',x+1,z,L)])if(w)r.push(w);return r}
+function supporters(e,idx){
+  const cat=ET[e.type].cat,L=e.L;
+  if(cat==='C'){const b=gC(idx,e.x,e.z,L-1);if(b)return[b];return[gH(idx,e.x,e.z,L),gB(idx,e.x,e.z,L)].filter(h=>h&&(h.type==='beam'||isSupportH(h)))}
+  if(cat==='W'){const b=gW(idx,e.dir,e.x,e.z,L-1);if(b)return[b];const r=[];
+    for(const [x,z] of elemCells(e)){const h=gH(idx,x,z,L);if(isSupportH(h))r.push(h);const bm=gB(idx,x,z,L);if(bm)r.push(bm)}return r}
+  if(cat==='S'){const h=gH(idx,e.x,e.z,L);return isSupportH(h)?[h]:[]}
+  if(cat==='H'){if(L<1)return[];const r=cellVerticals(idx,e.x,e.z,L-1);
+    for(const [dx,dz] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const b=gB(idx,e.x+dx,e.z+dz,L);if(b)r.push(b)}return r}
+  if(cat==='B'){if(L<1)return[];return cellVerticals(idx,e.x,e.z,L-1)}
+  return[];
+}
+function rank(e){const c=ET[e.type].cat;return e.L*10+(c==='W'||c==='C'||c==='S'?3:c==='H'?(e.type==='foundation'?0:2):1)}
+function computeLoads(idx){
+  const list=[...idx.values()].sort((a,b)=>rank(b)-rank(a));
+  const load=new Map(),res=new Map();
+  for(const e of list)load.set(e,eWeight(e)+(e._furn||0));
+  for(const e of list){
+    const l=load.get(e),cap=eCap(e);
+    if(e.type==='foundation'){res.set(e,{load:l,cap,ratio:l/cap});continue}
+    const sup=supporters(e,idx);
+    if(!sup.length){res.set(e,{load:l,cap,ratio:Infinity,unsup:true});continue}
+    const sh=l/sup.length;for(const s of sup)load.set(s,load.get(s)+sh);
+    res.set(e,{load:l,cap,ratio:l/cap});
+  }
+  return res;
+}
+function applyFurnLoads(){for(const e of elems.values())e._furn=0;for(const f of furn.values()){const h=elems.get(f.floorKey);if(h)h._furn+=f.w||0}}
+
+// ---- 메시 ----
+let wedgeG=null;
+function wedgeGeo(){if(wedgeG)return wedgeG;const s=new THREE.Shape();s.moveTo(-1.02,0);s.lineTo(1.02,0);s.lineTo(1.02,1.2);s.closePath();
+  const g=new THREE.ExtrudeGeometry(s,{depth:2.04,bevelEnabled:false});g.rotateY(-Math.PI/2);g.translate(1.02,0,0);g.computeVertexNormals();wedgeG=g;return g}
+function buildWall(g,t,len,mS,mG){
+  if(t==='wall'){addBox(g,len,2.98,.2,0,1.49,0,mS);return}
+  if(t==='window'){const sw=(len-1.2)/2;
+    addBox(g,len,.9,.2,0,.45,0,mS);addBox(g,len,.7,.2,0,2.63,0,mS);
+    addBox(g,sw,1.38,.2,-(.6+sw/2),1.59,0,mS);addBox(g,sw,1.38,.2,(.6+sw/2),1.59,0,mS);
+    addBox(g,1.2,1.38,.03,0,1.59,0,mG||glassMat());const fr=mG||col(0xeeeeea,.5);
+    addBox(g,.05,1.38,.07,0,1.59,0,fr);addBox(g,1.28,.06,.3,0,.92,0,fr);return}
+  if(t==='door'){const sw=(len-1)/2;
+    addBox(g,sw,2.2,.2,-(.5+sw/2),1.1,0,mS);addBox(g,sw,2.2,.2,(.5+sw/2),1.1,0,mS);addBox(g,len,.78,.2,0,2.59,0,mS);
+    addBox(g,.96,2.18,.05,0,1.09,.04,mG||col(0x5a3b24,.6));const k=addBox(g,.06,.06,.1,.36,1.05,.1,mG||col(0xc9a24a,.3,.8));k.castShadow=false;}
+}
+function buildElemMesh(e,ghost){
+  const g=new THREE.Group();const t=e.type;const cat=ET[t].cat;
+  const mS=ghost||(e.color&&e.mat!=='glass'?paintMat(e.color):baseMat(e.mat));
+  const mH=ghost||(e.finish?finishMat(e.finish):baseMat(e.mat));
+  const cx=e.x*CELL+1,cz=e.z*CELL+1;
+  if(t==='foundation'){addBox(g,2,.95,2,0,-.475,0,mH);g.position.set(cx,BASE,cz)}
+  else if(t==='floor'){addBox(g,2,.25,2,0,-.125,0,mH);g.position.set(cx,Y(e.L),cz)}
+  else if(t==='roof'){addBox(g,2,.26,2,0,-.13,0,ghost||flatRoofMat());g.position.set(cx,Y(e.L),cz)}
+  else if(t==='proof'){const m=new THREE.Mesh(wedgeGeo(),ghost||roofMat(e.mat));m.position.y=-.16;m.castShadow=m.receiveShadow=true;g.add(m);g.rotation.y=-e.rot*Math.PI/2;g.position.set(cx,Y(e.L),cz)}
+  else if(cat==='W'){const len=e.dir==='x'?2.19:2.21;buildWall(g,t,len,mS,ghost);
+    if(e.dir==='x')g.position.set(e.x*CELL+1,Y(e.L),e.z*CELL);else{g.position.set(e.x*CELL,Y(e.L),e.z*CELL+1);g.rotation.y=Math.PI/2}}
+  else if(t==='column'){addBox(g,.38,2.98,.38,0,1.49,0,mS);g.position.set(cx,Y(e.L),cz)}
+  else if(t==='beam'){addBox(g,2,.4,.3,0,-.45,0,mS);addBox(g,.3,.4,2,0,-.45,0,mS);g.position.set(cx,Y(e.L),cz)}
+  else if(t==='stairs'){for(let i=0;i<10;i++)addBox(g,1.7,(i+1)*.3,.2,0,(i+1)*.15,-1+.1+i*.2,mS);g.rotation.y=-e.rot*Math.PI/2;g.position.set(cx,Y(e.L),cz)}
+  g.traverse(o=>{if(o.isMesh){o.userData.key=e.key;if(ghost){o.castShadow=false;o.receiveShadow=false;o.renderOrder=5}}});
+  return g;
+}
+function rebuildPickLists(){
+  pickMeshes=[];hMeshes=[];
+  for(const e of elems.values()){if(!e.mesh)continue;e.mesh.traverse(o=>{if(o.isMesh){pickMeshes.push(o);if(e.type==='foundation'||e.type==='floor')hMeshes.push(o)}})}
+}
+function makeElem(spec){
+  const e={type:spec.type,mat:spec.mat,x:spec.x,z:spec.z,L:spec.L,dir:spec.dir||null,rot:spec.rot||0,color:spec.color||null,finish:spec.finish||null};
+  e.key=slotKeyOf(e);e.uid=S.uidSeq++;const p=elemPlot(e);e.plot=p?p.id:null;e.cost=spec.cost!=null?spec.cost:eCost(e.type,e.mat);return e;
+}
+function addElem(e){e.mesh=buildElemMesh(e);scene.add(e.mesh);elems.set(e.key,e);applyStressLook(e);updateElemVisibility(e)}
+function refreshElemMesh(e){if(e.mesh)scene.remove(e.mesh);e.mesh=buildElemMesh(e);scene.add(e.mesh);applyStressLook(e);updateElemVisibility(e);rebuildPickLists()}
+function specOfElem(e){return{type:e.type,mat:e.mat,x:e.x,z:e.z,L:e.L,dir:e.dir,rot:e.rot,color:e.color,finish:e.finish,cost:e.cost}}
+
+function canPlace(spec){
+  const t=ET[spec.type];
+  if(spec.L<t.minL)return{ok:false,msg:`${t.n}은(는) ${levelName(t.minL)} 이상에 놓습니다. 작업 층을 올리세요`};
+  if(t.maxL!=null&&spec.L>t.maxL)return{ok:false,msg:'기초는 1층(지면)에만 놓을 수 있습니다'};
+  if(spec.L>MAXL)return{ok:false,msg:'최대 층수를 넘었습니다'};
+  if(spec.mat==='glass'&&t.cat!=='W')return{ok:false,msg:'강화유리는 벽·창문·문에만 쓸 수 있습니다'};
+  if(!elemPlot(spec))return{ok:false,msg:'구매한 부지 안에서만 지을 수 있습니다 (경영 모드에서 부지 구매)'};
+  if(elems.has(slotKeyOf(spec)))return{ok:false,msg:'이 자리에 이미 부재가 있습니다'};
+  const cost=S.tutorialDone?eCost(spec.type,spec.mat):0;
+  if(cost>S.money)return{ok:false,msg:`자금이 부족합니다 (필요 ${won(cost)})`};
+  return{ok:true,cost};
+}
+function evalPlacement(spec){
+  const c=canPlace(spec);if(!c.ok)return{ok:false,msg:c.msg,cls:'bad'};
+  const tmp=makeElemTemp(spec);applyFurnLoads();
+  const idx=new Map(elems);idx.set(tmp.key,tmp);const res=computeLoads(idx);
+  const r=res.get(tmp);let fails=0;for(const [e,v] of res)if(e!==tmp&&v.ratio>1)fails++;
+  if(r.unsup)return{ok:true,warn:true,msg:`받쳐 주는 부재가 없습니다 → 놓으면 바로 무너집니다`,ratio:Infinity,cost:c.cost,cls:'bad'};
+  if(r.ratio>1||fails)return{ok:true,warn:true,msg:`하중 초과 예상 (${Math.round(r.ratio*100)}%${fails?`, 다른 부재 ${fails}개 붕괴`:''})`,ratio:r.ratio,cost:c.cost,cls:'bad'};
+  return{ok:true,ratio:r.ratio,cost:c.cost,msg:`예상 하중률 ${Math.round(r.ratio*100)}% · 비용 ${won(c.cost)}`,cls:r.ratio>.8?'mid':'good'};
+}
+function makeElemTemp(spec){const e={type:spec.type,mat:spec.mat,x:spec.x,z:spec.z,L:spec.L,dir:spec.dir||null,rot:spec.rot||0,_furn:0};e.key=slotKeyOf(e);return e}
+function placeElem(spec,stroke){
+  const c=canPlace(spec);if(!c.ok){if(!stroke||!stroke.warned){toast(c.msg,'bad');if(stroke)stroke.warned=true}return null}
+  const e=makeElem(Object.assign({},spec,{cost:c.cost}));
+  S.money-=c.cost;addElem(e);rebuildPickLists();
+  if(stroke){stroke.items.push({key:e.key,uid:e.uid,cost:e.cost})}
+  checkStructure();onWorldChanged();return e;
+}
+function removeElem(e,mode){
+  elems.delete(e.key);
+  if(mode==='collapse')spawnDebris(e.mesh);else scene.remove(e.mesh);
+  for(const f of [...furn.values()])if(f.floorKey===e.key){if(mode!=='collapse'&&mode!=='silent')S.money+=Math.round(f.cost*.5);removeFurn(f,mode==='collapse'?'collapse':'silent')}
+  rebuildPickLists();
+}
+function demolishAt(e){
+  const refund=S.tutorialDone?Math.round(e.cost*.5):0;
+  const spec=specOfElem(e);removeElem(e,'demolish');S.money+=refund;
+  pushUndo({kind:'remove',specs:[spec],refund});toast(`${elemLabel(e)} 철거 · 환급 ${won(refund)}`);
+  checkStructure();onWorldChanged();
+}
+function checkStructure(){
+  let lost=0,lostCost=0;
+  for(let it=0;it<60;it++){
+    applyFurnLoads();const res=computeLoads(elems);S.lastRes=res;
+    const fail=[];for(const [e,r] of res)if(r.ratio>1)fail.push(e);
+    if(!fail.length)break;
+    for(const e of fail){removeElem(e,'collapse');lost++;lostCost+=e.cost}
+  }
+  if(lost){S.stats.collapses++;toast(`구조 붕괴! 부재 ${lost}개가 무너졌습니다 (손실 ${won(lostCost)}). 하중 보기(H)로 원인을 확인하세요`,'bad');shake=.6}
+  S.structDirty=false;refreshStressAll();return lost;
+}
+// ---- 하중 시각화 ----
+function stressColor(r){if(!isFinite(r))return 0xd02020;if(r<.5)return 0x3fa65a;if(r<.8)return 0xd8c22a;if(r<.95)return 0xe6801f;return 0xd63a24}
+function stressMat(hex){return M('stress|'+hex,()=>std(hex,.6,0,{emissive:hex,emissiveIntensity:.25}))}
+function applyStressLook(e){
+  const r=S.lastRes&&S.lastRes.get(e);const hex=r?stressColor(r.ratio):0x3fa65a;
+  e.mesh.traverse(o=>{if(!o.isMesh)return;if(o.userData.orig===undefined)o.userData.orig=o.material;o.material=S.stressView?stressMat(hex):o.userData.orig});
+}
+function refreshStressAll(){for(const e of elems.values())applyStressLook(e)}
+function updateElemVisibility(e){e.mesh.visible=!(S.cutaway&&e.L>S.workLevel)}
+function updateVisibilityAll(){for(const e of elems.values())updateElemVisibility(e);for(const f of furn.values())f.mesh.visible=!(S.cutaway&&f.L>S.workLevel)}
+function plotStructure(pid){
+  let max=0,warn=0,worst=null,n=0;
+  if(S.lastRes)for(const [e,r] of S.lastRes){if(e.plot!==pid)continue;n++;if(r.ratio>.8)warn++;if(r.ratio>max){max=r.ratio;worst=e}}
+  return{max,warn,worst,n};
+}
+
+// ---- 잔해 ----
+const debris=[];let shake=0;
+function spawnDebris(obj){
+  if(!obj)return;debris.push({o:obj,v:V3(rnd(-1.6,1.6),rnd(0,2.2),rnd(-1.6,1.6)),w:V3(rnd(-2,2),rnd(-1,1),rnd(-2,2)),t:0});
+  const p=new THREE.Vector3();obj.getWorldPosition(p);puff(p,8,0x9c958a);
+}
+function updateDebris(dt){
+  for(let i=debris.length-1;i>=0;i--){const d=debris[i];d.t+=dt;d.v.y-=12*dt;d.o.position.addScaledVector(d.v,dt);
+    d.o.rotation.x+=d.w.x*dt;d.o.rotation.y+=d.w.y*dt;d.o.rotation.z+=d.w.z*dt;
+    if(d.o.position.y<groundAt(d.o.position.x,d.o.position.z)-.5){d.v.multiplyScalar(.3);d.v.y=Math.abs(d.v.y)*.2}
+    if(d.t>2.4){scene.remove(d.o);debris.splice(i,1)}}
+}
+// ---- 먼지 입자 ----
+const parts=[];const PARTG=new THREE.BoxGeometry(.14,.14,.14);
+function puff(p,n,hex){for(let i=0;i<n;i++){if(parts.length>160)break;const m=new THREE.Mesh(PARTG,col(hex,1));m.position.copy(p).add(V3(rnd(-.4,.4),rnd(0,.4),rnd(-.4,.4)));
+  const s=rnd(.6,1.6);m.scale.setScalar(s);scene.add(m);parts.push({m,v:V3(rnd(-1.5,1.5),rnd(1,3.5),rnd(-1.5,1.5)),t:0,life:rnd(.6,1.2)})}}
+function updateParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.t+=dt;p.v.y-=9*dt;p.m.position.addScaledVector(p.v,dt);p.m.scale.multiplyScalar(1-dt*.8);if(p.t>p.life){scene.remove(p.m);parts.splice(i,1)}}}
+
+// ---- 되돌리기 ----
+function pushUndo(a){S.undo.push(a);if(S.undo.length>80)S.undo.shift()}
+function undo(){
+  const a=S.undo.pop();if(!a){toast('되돌릴 작업이 없습니다');return}
+  if(a.kind==='add'){let ref=0;for(const it of a.items){const e=elems.get(it.key);if(e&&e.uid===it.uid){removeElem(e,'undo');ref+=it.cost}}S.money+=ref;toast(`배치 취소 · ${won(ref)} 환급`)}
+  else if(a.kind==='remove'){S.money-=a.refund;for(const sp of a.specs){if(elems.has(slotKeyOf(sp)))continue;const e=makeElem(sp);addElem(e)}rebuildPickLists();toast('철거 취소')}
+  else if(a.kind==='furn-add'){const f=furn.get(a.id);if(f){removeFurn(f,'silent');S.money+=f.cost}toast('가구 배치 취소')}
+  else if(a.kind==='furn-remove'){S.money-=a.refund;restoreFurn(a.data);toast('가구 삭제 취소')}
+  else if(a.kind==='furn-move'){const f=furn.get(a.id);if(f){Object.assign(f,a.from);positionFurn(f)}toast('이동 취소')}
+  else if(a.kind==='paint'){const e=elems.get(a.key);if(e&&e.uid===a.uid){e.color=a.prev.color;e.finish=a.prev.finish;S.money+=a.cost;refreshElemMesh(e)}toast('마감 변경 취소')}
+  checkStructure();onWorldChanged();
+}
+
+// ================= 가구와 인테리어 =================
+const furn=new Map();
+let furnMeshes=[];
+const FC={fab:0x5c6a79,cush:0x7f8c99,woodL:0xb48c5f,woodD:0x6a4a33,white:0xefeee8,black:0x1d1f22,metal:0xbfc4c8,green:0x4f7a3a,red:0x8d3b36};
+function bx(g,w,h,d,x,y,z,hex,r=.75,m=0){return addBox(g,w,h,d,x,y,z,typeof hex==='number'?col(hex,r,m):hex)}
+function cy(g,rt,rb,h,x,y,z,hex,r=.7,m=0,seg=14){const me=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),typeof hex==='number'?col(hex,r,m):hex);me.position.set(x,y,z);me.castShadow=me.receiveShadow=true;g.add(me);return me}
+function legs4(g,w,d,h,hex,t=.05){for(const sx of [-1,1])for(const sz of [-1,1])bx(g,t,h,t,sx*(w/2-t),h/2,sz*(d/2-t),hex)}
+function books(g,x0,w,y,z,d){let x=x0;while(x<x0+w-.05){const bw=rnd(.03,.07),bh=rnd(.22,.3);bx(g,bw,bh,d,x+bw/2,y+bh/2,z,new THREE.Color().setHSL(Math.random(),rnd(.3,.6),rnd(.3,.55)).getHex(),.8);x+=bw+.005}}
+const emis=(hex,i=1)=>M('em|'+hex+'|'+i,()=>std(hex,.5,0,{emissive:hex,emissiveIntensity:i}));
+const FURN={
+  sofa:{n:'소파',cat:'거실',cost:900000,w:.08,b:g=>{bx(g,2,.42,.9,0,.21,0,FC.fab,.95);bx(g,2,.5,.2,0,.67,-.35,FC.fab,.95);bx(g,.2,.62,.9,-.9,.31,0,FC.fab,.95);bx(g,.2,.62,.9,.9,.31,0,FC.fab,.95);bx(g,.8,.12,.64,-.4,.48,.06,FC.cush,.95);bx(g,.8,.12,.64,.4,.48,.06,FC.cush,.95)}},
+  armchair:{n:'안락의자',cat:'거실',cost:450000,w:.04,b:g=>{bx(g,.9,.42,.85,0,.21,0,0x8a6b4f,.9);bx(g,.9,.5,.18,0,.67,-.33,0x8a6b4f,.9);bx(g,.16,.6,.85,-.37,.3,0,0x8a6b4f,.9);bx(g,.16,.6,.85,.37,.3,0,0x8a6b4f,.9)}},
+  coffeetable:{n:'거실 탁자',cat:'거실',cost:250000,w:.03,b:g=>{bx(g,1.1,.05,.6,0,.42,0,FC.woodL,.5);legs4(g,1.1,.6,.4,FC.woodD)}},
+  tv:{n:'TV와 장식장',cat:'거실',cost:1600000,w:.06,b:g=>{bx(g,1.6,.45,.4,0,.225,0,FC.woodD);bx(g,1.3,.76,.05,0,.95,0,FC.black,.4);bx(g,1.24,.7,.01,0,.95,.03,emis(0x1d3346,.6));bx(g,.3,.12,.18,0,.52,0,FC.black)}},
+  rug:{n:'러그',cat:'거실',cost:200000,w:.01,b:g=>{bx(g,2,.02,1.4,0,.011,0,FC.red,1);bx(g,1.7,.021,1.1,0,.012,0,0xb88a5a,1)}},
+  bookshelf:{n:'책장',cat:'거실',cost:350000,w:.15,shelf:1,b:g=>{bx(g,1,2,.04,0,1,-.16,FC.woodL);bx(g,.04,2,.35,-.48,1,0,FC.woodL);bx(g,.04,2,.35,.48,1,0,FC.woodL);for(let i=0;i<5;i++)bx(g,.96,.03,.35,0,.02+i*.48,0,FC.woodL);for(let i=0;i<4;i++)books(g,-.45,.9,.035+i*.48,0,.24)}},
+  plant:{n:'화분',cat:'거실',cost:80000,w:.02,b:g=>{cy(g,.2,.15,.4,0,.2,0,0xc8b9a2);const f=new THREE.Mesh(new THREE.IcosahedronGeometry(.42,1),std(0x4d7a34,.9,0,{flatShading:true}));f.position.y=.85;f.scale.y=1.3;f.castShadow=true;g.add(f)}},
+  floorlamp:{n:'스탠드 조명',cat:'조명',cost:180000,w:.01,light:'point',b:g=>{cy(g,.16,.18,.04,0,.02,0,FC.black,.4,.5);cy(g,.02,.02,1.5,0,.77,0,FC.black,.4,.5);cy(g,.12,.22,.3,0,1.55,0,emis(0xf5deb0,.8),.8,0,16)}},
+  pendant:{n:'샹들리에',cat:'조명',cost:600000,w:.02,light:'point',b:g=>{cy(g,.01,.01,1.0,0,2.45,0,FC.black);const r=new THREE.Mesh(new THREE.TorusGeometry(.35,.03,8,24),col(0xc9a24a,.3,.8));r.rotation.x=Math.PI/2;r.position.y=1.95;g.add(r);for(let i=0;i<6;i++){const a=i/6*Math.PI*2;const b=new THREE.Mesh(UNIT_SPH,emis(0xfff0c8,1.2));b.scale.setScalar(.06);b.position.set(Math.cos(a)*.35,2.02,Math.sin(a)*.35);g.add(b)}}},
+  bed:{n:'침대',cat:'침실',cost:1200000,w:.1,b:g=>{bx(g,1.6,.35,2.1,0,.175,0,FC.woodD);bx(g,1.5,.22,2,0,.46,0,FC.white,.95);bx(g,1.52,.07,1.3,0,.6,.35,0x3e5a7a,.95);bx(g,.6,.12,.35,-.38,.63,-.78,FC.white,.95);bx(g,.6,.12,.35,.38,.63,-.78,FC.white,.95);bx(g,1.6,.95,.08,0,.47,-1.04,FC.woodD)}},
+  wardrobe:{n:'옷장',cat:'침실',cost:700000,w:.12,b:g=>{bx(g,1.2,2.1,.6,0,1.05,0,FC.white,.6);bx(g,.01,2.0,.01,0,1.05,.305,0x999999);bx(g,.03,.25,.03,-.06,1.1,.32,FC.metal,.3,.8);bx(g,.03,.25,.03,.06,1.1,.32,FC.metal,.3,.8)}},
+  nightstand:{n:'협탁',cat:'침실',cost:150000,w:.02,b:g=>{bx(g,.45,.5,.4,0,.25,0,FC.woodL,.6);bx(g,.1,.02,.02,0,.38,.21,FC.metal,.3,.8)}},
+  desk:{n:'책상',cat:'침실',cost:300000,w:.03,b:g=>{bx(g,1.2,.04,.6,0,.74,0,FC.woodL,.55);legs4(g,1.2,.6,.72,FC.black)}},
+  chair:{n:'의자',cat:'침실',cost:90000,w:.01,b:g=>{bx(g,.45,.05,.45,0,.45,0,FC.woodL);bx(g,.45,.45,.04,0,.7,-.2,FC.woodL);legs4(g,.45,.45,.43,FC.woodD,.04)}},
+  kcounter:{n:'주방 조리대',cat:'주방',cost:1400000,w:.2,b:g=>{bx(g,2,.86,.6,0,.43,0,FC.white,.5);bx(g,2,.04,.62,0,.88,0,0x5b5f63,.3);bx(g,.5,.015,.38,.5,.905,0,0x2a2d30,.2,.5);cy(g,.015,.015,.3,.5,1.05,-.2,FC.metal,.2,.9)}},
+  fridge:{n:'냉장고',cat:'주방',cost:1500000,w:.12,b:g=>{bx(g,.8,1.9,.7,0,.95,0,0xdadfe2,.3,.4);bx(g,.8,.01,.01,0,1.25,.355,0x888888);bx(g,.03,.5,.03,.33,1.6,.37,FC.metal,.2,.9);bx(g,.03,.5,.03,.33,.9,.37,FC.metal,.2,.9)}},
+  stove:{n:'가스레인지',cat:'주방',cost:600000,w:.06,b:g=>{bx(g,.6,.88,.6,0,.44,0,0xc9cdd0,.35,.5);bx(g,.6,.02,.6,0,.89,0,FC.black,.3);for(const [x,z] of [[-.14,-.14],[.14,-.14],[-.14,.14],[.14,.14]]){const r=new THREE.Mesh(new THREE.TorusGeometry(.08,.012,6,16),col(0x555555,.4,.6));r.rotation.x=Math.PI/2;r.position.set(x,.91,z);g.add(r)}}},
+  dtable:{n:'식탁',cat:'주방',cost:500000,w:.05,b:g=>{bx(g,1.6,.05,.9,0,.75,0,FC.woodD,.5);legs4(g,1.6,.9,.73,FC.woodD,.07)}},
+  bathtub:{n:'욕조',cat:'욕실',cost:900000,w:.3,b:g=>{bx(g,1.7,.55,.8,0,.275,0,FC.white,.2);bx(g,1.5,.02,.6,0,.5,0,M('water',()=>std(0x7fb6cc,.05,0,{transparent:true,opacity:.7})))}},
+  toilet:{n:'변기',cat:'욕실',cost:400000,w:.04,b:g=>{bx(g,.38,.4,.55,0,.2,.03,FC.white,.2);bx(g,.4,.42,.18,0,.6,-.25,FC.white,.2);bx(g,.4,.04,.5,0,.42,.05,0xe8e8e8,.2)}},
+  vanity:{n:'세면대',cat:'욕실',cost:500000,w:.05,b:g=>{bx(g,.8,.8,.5,0,.4,0,FC.woodL);bx(g,.8,.05,.52,0,.82,0,FC.white,.2);bx(g,.4,.02,.3,0,.85,0,0xd9dde0,.1,.3);bx(g,.6,.8,.02,0,1.55,-.24,M('mirror',()=>std(0xdfe8ee,.03,1)))}},
+  officedesk:{n:'사무용 책상',cat:'사무·학교',cost:650000,w:.06,b:g=>{bx(g,1.6,.04,.8,0,.74,0,0xe0ddd5,.5);legs4(g,1.6,.8,.72,0x55595e,.05);bx(g,.6,.36,.03,0,1.0,-.25,FC.black,.4);bx(g,.58,.33,.01,0,1.0,-.233,emis(0x24415c,.5))}},
+  officechair:{n:'사무용 의자',cat:'사무·학교',cost:250000,w:.02,b:g=>{cy(g,.28,.28,.03,0,.05,0,FC.black);cy(g,.03,.03,.4,0,.27,0,FC.metal,.3,.8);bx(g,.5,.08,.5,0,.5,0,0x2b3440,.9);bx(g,.48,.6,.06,0,.86,-.24,0x2b3440,.9)}},
+  schooldesk:{n:'학생 책상 세트',cat:'사무·학교',cost:200000,w:.03,b:g=>{bx(g,.65,.03,.45,0,.72,0,0xd8c39b,.6);legs4(g,.65,.45,.7,0x6e7378,.04);bx(g,.4,.04,.38,0,.43,.55,0xd8c39b);bx(g,.4,.35,.03,0,.62,.73,0xd8c39b);for(const sx of [-1,1])for(const sz of [.4,.7])bx(g,.03,.41,.03,sx*.18,.205,sz,0x6e7378)}},
+  whiteboard:{n:'화이트보드',cat:'사무·학교',cost:300000,w:.03,b:g=>{bx(g,2,1.1,.04,0,1.5,0,0xf5f6f4,.2);bx(g,2.06,.05,.1,0,.93,.03,0x9aa0a5,.4,.6);bx(g,.05,1.5,.05,-.95,.75,-.05,0x9aa0a5,.4,.6);bx(g,.05,1.5,.05,.95,.75,-.05,0x9aa0a5,.4,.6)}},
+  libshelf:{n:'도서관 서가',cat:'사무·학교',cost:900000,w:.3,shelf:2,b:g=>{bx(g,2,2.2,.04,0,1.1,-.18,0x8a6b4f);for(const x of [-.98,0,.98])bx(g,.04,2.2,.4,x,1.1,0,0x8a6b4f);for(let i=0;i<6;i++)bx(g,2,.03,.4,0,.02+i*.43,0,0x8a6b4f);for(let i=0;i<5;i++){books(g,-.95,.93,.035+i*.43,0,.28);books(g,.03,.93,.035+i*.43,0,.28)}}},
+  counter:{n:'계산대',cat:'상점',cost:700000,w:.1,b:g=>{bx(g,1.8,1,.6,0,.5,0,FC.woodD);bx(g,1.9,.05,.7,0,1.02,0,0xd9d6cf,.3);bx(g,.35,.25,.3,.5,1.17,0,FC.black,.4)}},
+  rack:{n:'옷걸이 진열대',cat:'상점',cost:350000,w:.03,b:g=>{cy(g,.02,.02,1.5,-.7,.75,0,FC.metal,.3,.8);cy(g,.02,.02,1.5,.7,.75,0,FC.metal,.3,.8);const t=cy(g,.02,.02,1.42,0,1.48,0,FC.metal,.3,.8);t.rotation.z=Math.PI/2;for(let i=0;i<7;i++)bx(g,.06,.75,.45,-.6+i*.2,1.05,0,new THREE.Color().setHSL(Math.random(),.45,.5).getHex(),.95)}},
+  shopshelf:{n:'상품 진열장',cat:'상점',cost:450000,w:.15,b:g=>{bx(g,1.6,1.6,.5,0,.8,0,0xe6e3dc,.6);for(let i=0;i<3;i++)for(let k=0;k<6;k++)bx(g,.18,.22,.3,-.62+k*.25,.42+i*.45,.05,new THREE.Color().setHSL(Math.random(),.6,.55).getHex(),.6)}},
+  displaycase:{n:'유리 진열장',cat:'박물관',cost:900000,w:.2,museum:6,b:g=>{bx(g,1,.9,.6,0,.45,0,0x2a2f35,.5);addBox(g,.98,.6,.58,0,1.2,0,glassMat());const s=new THREE.Mesh(UNIT_SPH,boneMat());s.scale.set(.2,.09,.12);s.position.set(0,.98,0);g.add(s);bx(g,.3,.03,.2,0,.915,0,0x8a7a62,.9)}},
+  spotlight:{n:'전시 조명',cat:'박물관',cost:400000,w:.02,light:'spot',museum:8,b:g=>{cy(g,.15,.18,.05,0,.03,0,FC.black,.4,.6);cy(g,.025,.025,2.6,0,1.3,0,FC.black,.4,.6);const h=cy(g,.09,.14,.28,0,2.55,.12,FC.black,.4,.6);h.rotation.x=.9}},
+  bench:{n:'관람객 벤치',cat:'박물관',cost:200000,w:.04,museum:2,b:g=>{bx(g,1.6,.07,.42,0,.45,0,FC.woodL,.6);for(const x of [-.65,.65])bx(g,.06,.42,.38,x,.21,0,0x3d4248,.4,.6)}},
+  infoboard:{n:'안내판',cat:'박물관',cost:150000,w:.01,museum:3,b:g=>{bx(g,.06,1,.06,0,.5,0,0x3d4248,.4,.6);const p=bx(g,.9,.6,.04,0,1.25,0,0x1e3448,.6);p.rotation.x=-.25;bx(g,.7,.04,.01,0,1.36,.03,0xe8a317,.5)}},
+  rope:{n:'관람 차단봉',cat:'박물관',cost:120000,w:.01,museum:1,b:g=>{for(const x of [-.9,.9]){cy(g,.03,.03,.9,x,.45,0,0xc9a24a,.3,.8);cy(g,.12,.14,.04,x,.02,0,0xc9a24a,.3,.8)}const r=cy(g,.018,.018,1.8,0,.82,0,0x8d2b2b,.9);r.rotation.z=Math.PI/2}},
+};
+const FCATS=['거실','침실','주방','욕실','조명','사무·학교','상점','박물관','전시물'];
+function furnLights(){let n=0;for(const f of furn.values())if(f.light)n++;return n}
+function buildFurnMesh(f){
+  let g;
+  if(f.exId){const ex=S.exhibits.find(x=>x.id===f.exId);g=buildExhibitMesh(ex)}
+  else{g=new THREE.Group();FURN[f.item].b(g)}
+  const it=f.item&&FURN[f.item];
+  if(it&&it.light&&furnLights()<14&&!f.ghost){
+    if(it.light==='point'){const l=new THREE.PointLight(0xffd7a0,1.1,9,2);l.position.set(0,f.item==='pendant'?1.9:1.6,0);g.add(l);f.light=l}
+    else{const l=new THREE.SpotLight(0xfff1dc,2.2,14,.55,.5,1.5);l.position.set(0,2.6,.2);const t=new THREE.Object3D();t.position.set(0,0,2.2);g.add(t);l.target=t;g.add(l);f.light=l}
+  }
+  g.traverse(o=>{if(o.isMesh)o.userData.furnId=f.id});
+  return g;
+}
+function positionFurn(f){f.mesh.position.set(f.x,f.y,f.z);f.mesh.rotation.y=f.rot||0}
+function rebuildFurnPick(){furnMeshes=[];for(const f of furn.values())f.mesh.traverse(o=>{if(o.isMesh)furnMeshes.push(o)})}
+function addFurnObj(f){f.mesh=buildFurnMesh(f);positionFurn(f);scene.add(f.mesh);furn.set(f.id,f);f.mesh.visible=!(S.cutaway&&f.L>S.workLevel);rebuildFurnPick()}
+function removeFurn(f,mode){
+  furn.delete(f.id);
+  if(mode==='collapse')spawnDebris(f.mesh);else scene.remove(f.mesh);
+  if(f.exId){const ex=S.exhibits.find(x=>x.id===f.exId);if(ex)ex.placed=false}
+  if(S.selFurn===f.id)S.selFurn=null;
+  rebuildFurnPick();
+}
+function furnData(f){return{id:f.id,item:f.item||null,exId:f.exId||null,x:f.x,y:f.y,z:f.z,rot:f.rot,floorKey:f.floorKey,L:f.L,plot:f.plot,cost:f.cost,w:f.w}}
+function restoreFurn(d){const f=Object.assign({},d);if(f.exId){const ex=S.exhibits.find(x=>x.id===f.exId);if(!ex)return;ex.placed=true}addFurnObj(f);return f}
+function furnSpecFromHit(hit){
+  // 바닥/기초 윗면에 닿았는지
+  if(!hit||hit.face.normal.y<.5)return null;const key=hit.object.userData.key;const e=elems.get(key);if(!e)return null;
+  const p=hit.point;const sn=v=>Math.round(v*4)/4;
+  return{x:sn(p.x),y:Y(e.L)+(e.type==='foundation'?0:0),z:sn(p.z),floorKey:key,L:e.L,plot:e.plot};
+}
+function placeFurnAt(spec){
+  const exId=S.fItem.startsWith('ex:')?+S.fItem.slice(3):null;
+  const plot=plotById(spec.plot);
+  if(!plot||!plot.owned){toast('구매한 부지의 바닥 위에만 놓을 수 있습니다','bad');return}
+  let cost,w,item=null;
+  if(exId){const ex=S.exhibits.find(x=>x.id===exId);if(!ex||ex.placed){toast('배치할 전시물이 없습니다','bad');return}
+    if(plot.purpose!=='museum'){toast('공룡 골격은 용도가 [박물관]인 부지에만 전시할 수 있습니다 (경영 모드에서 지정)','bad');return}
+    cost=0;w=3;ex.placed=true}
+  else{item=S.fItem;const it=FURN[item];cost=S.tutorialDone?it.cost:0;w=it.w;if(cost>S.money){toast(`자금이 부족합니다 (필요 ${won(cost)})`,'bad');return}}
+  S.money-=cost;
+  const f={id:S.furnSeq++,item,exId,x:spec.x,y:spec.y,z:spec.z,rot:S.rot*Math.PI/2,floorKey:spec.floorKey,L:spec.L,plot:spec.plot,cost,w};
+  addFurnObj(f);pushUndo({kind:'furn-add',id:f.id});
+  checkStructure();onWorldChanged();
+}
+function deleteFurn(f){
+  const refund=S.tutorialDone?Math.round(f.cost*.7):0;const d=furnData(f);removeFurn(f,'delete');S.money+=refund;
+  pushUndo({kind:'furn-remove',data:d,refund});toast(`가구 삭제 · 환급 ${won(refund)}`);checkStructure();onWorldChanged();
+}
+function paintTarget(hit){
+  const key=hit.object.userData.key;const e=elems.get(key);if(!e)return;
+  const cat=ET[e.type].cat;const prev={color:e.color,finish:e.finish};let cost;
+  if(S.fTool==='paint'){if(!(cat==='W'||cat==='C')){toast('벽과 기둥에만 칠할 수 있습니다','bad');return}if(e.mat==='glass'){toast('유리 벽은 칠할 수 없습니다','bad');return}
+    if(e.color===S.paint)return;cost=S.tutorialDone?50000:0;e.color=S.paint}
+  else{if(!(e.type==='floor'||e.type==='foundation')){toast('바닥재는 기초·바닥판 윗면에 깝니다','bad');return}
+    if(e.finish===S.finish)return;cost=S.tutorialDone?FINISH[S.finish].cost:0;e.finish=S.finish}
+  if(cost>S.money){e.color=prev.color;e.finish=prev.finish;toast('자금이 부족합니다','bad');return}
+  S.money-=cost;refreshElemMesh(e);pushUndo({kind:'paint',key:e.key,uid:e.uid,prev,cost});onWorldChanged();
+}
+
+// ================= 포크레인 =================
+const EXC={pos:V3(56.5,0,-2),head:Math.PI/2,swing:0,boomA:.45,stickA:-1.5,bucketA:-.7,load:0,cd:0,speed:0,digAcc:0};
+let excG,excUp,excBoom,excStick,excBucket,excTipObj,excSoil;
+function buildExcavator(){
+  const g=new THREE.Group();const YL=col(0xE3A21A,.45,.25),DK=col(0x2a2a2a,.8,.2),ST=col(0x9aa0a4,.35,.8);
+  const trk=std(0xffffff,.9,0,{map:TEX.track});
+  for(const z of [-1.15,1.15]){addBox(g,4.2,.85,.75,0,.43,z,trk);for(const x of [-1.75,1.75]){const w=cy(g,.42,.42,.8,x,.43,z,DK);w.rotation.x=Math.PI/2}}
+  addBox(g,3.2,.35,1.6,0,.95,0,DK);
+  const up=new THREE.Group();up.position.y=1.12;g.add(up);
+  addBox(up,3.1,1.0,2.5,-.35,.5,0,YL);addBox(up,.9,1.15,2.4,-1.95,.58,0,DK);
+  addBox(up,1.25,1.5,1.1,.7,1.75,-.62,YL);addBox(up,.04,1.0,.96,1.34,1.9,-.62,glassMat());addBox(up,1.0,.9,.04,.65,1.95,-1.18,glassMat());
+  addBox(up,1.3,.06,1.15,.7,2.53,-.62,DK);cy(up,.06,.06,.7,-1.1,1.3,.75,DK);
+  const boom=new THREE.Group();boom.position.set(1.05,1.15,.3);up.add(boom);
+  addBox(boom,4.6,.52,.42,2.3,0,0,YL);addBox(boom,2.4,.14,.14,1.1,-.4,0,ST);
+  const stick=new THREE.Group();stick.position.set(4.6,0,0);boom.add(stick);
+  addBox(stick,3.0,.38,.34,1.5,0,0,YL);addBox(stick,1.7,.12,.12,.9,.3,0,ST);
+  const bucket=new THREE.Group();bucket.position.set(3.0,0,0);stick.add(bucket);
+  addBox(bucket,.12,.9,1.0,0,-.42,0,DK);addBox(bucket,.95,.12,1.0,.45,-.85,0,DK);addBox(bucket,.95,.85,.08,.45,-.45,-.5,DK);addBox(bucket,.95,.85,.08,.45,-.45,.5,DK);
+  for(let i=0;i<5;i++)addBox(bucket,.18,.08,.1,.98,-.86,-.4+i*.2,ST);
+  const tip=new THREE.Object3D();tip.position.set(.98,-.86,0);bucket.add(tip);
+  const soil=new THREE.Mesh(UNIT_SPH,col(0x6b4c31,1));soil.position.set(.45,-.55,0);soil.visible=false;bucket.add(soil);
+  g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+  excG=g;excUp=up;excBoom=boom;excStick=stick;excBucket=bucket;excTipObj=tip;excSoil=soil;scene.add(g);syncExc();
+}
+function syncExc(){
+  EXC.pos.y=(groundAt(EXC.pos.x+1.5,EXC.pos.z)+groundAt(EXC.pos.x-1.5,EXC.pos.z)+groundAt(EXC.pos.x,EXC.pos.z+1.2)+groundAt(EXC.pos.x,EXC.pos.z-1.2))/4;
+  excG.position.copy(EXC.pos);excG.rotation.y=EXC.head;excUp.rotation.y=EXC.swing;
+  excBoom.rotation.z=EXC.boomA;excStick.rotation.z=EXC.stickA;excBucket.rotation.z=EXC.bucketA;
+  excSoil.visible=EXC.load>.02;excSoil.scale.set(.42,.32*EXC.load+.05,.45);
+}
+function excTip(){excG.updateMatrixWorld(true);return excTipObj.getWorldPosition(new THREE.Vector3())}
+function surfaceAt(x,z){const i=siteCellAt(x,z);return i>=0?site.top[i]:groundAt(x,z)}
+function excBlocked(x,z){
+  if(inRect(x,z,SITE,1.6))return'발굴지 안으로는 들어갈 수 없습니다';
+  for(const [dx,dz] of [[0,0],[1.6,1.6],[-1.6,1.6],[1.6,-1.6],[-1.6,-1.6]]){const cx=Math.floor((x+dx)/CELL),cz=Math.floor((z+dz)/CELL);if(elems.has(`H:${cx},${cz},0`))return'건물과 부딪혔습니다'}
+  if(x<TER.cx-TER.size/2+10||x>TER.cx+TER.size/2-10||z<TER.cz-TER.size/2+10||z>TER.cz+TER.size/2-10)return'더 이상 갈 수 없습니다';
+  return null;
+}
+let lastBlockMsg=0;
+function updateExc(dt){
+  if(S.mode!=='exc'){EXC.speed=0;return}
+  EXC.cd=Math.max(0,EXC.cd-dt);
+  const k=keys;const target=(k.KeyW?5:0)-(k.KeyS?3:0);EXC.speed+=(target-EXC.speed)*Math.min(1,dt*3);
+  if(k.KeyA)EXC.head+=dt*.9*(EXC.speed<-.1?-1:1);if(k.KeyD)EXC.head-=dt*.9*(EXC.speed<-.1?-1:1);
+  if(Math.abs(EXC.speed)>.05){const nx=EXC.pos.x+Math.cos(EXC.head)*EXC.speed*dt,nz=EXC.pos.z-Math.sin(EXC.head)*EXC.speed*dt;
+    const b=excBlocked(nx,nz);if(b){EXC.speed=0;if(performance.now()-lastBlockMsg>1500){toast(b,'bad');lastBlockMsg=performance.now()}}else{EXC.pos.x=nx;EXC.pos.z=nz}}
+  if(k.KeyQ)EXC.swing+=dt*.9;if(k.KeyE)EXC.swing-=dt*.9;
+  const prev=[EXC.boomA,EXC.stickA,EXC.bucketA];
+  if(k.KeyI)EXC.boomA+=dt*.55;if(k.KeyK)EXC.boomA-=dt*.55;
+  if(k.KeyJ)EXC.stickA-=dt*.75;if(k.KeyL)EXC.stickA+=dt*.75;
+  if(k.KeyO)EXC.bucketA-=dt*1.3;if(k.KeyU)EXC.bucketA+=dt*1.3;
+  EXC.boomA=clamp(EXC.boomA,-.75,1.05);EXC.stickA=clamp(EXC.stickA,-2.5,-.45);EXC.bucketA=clamp(EXC.bucketA,-2.3,.7);
+  syncExc();let tip=excTip();const gh=surfaceAt(tip.x,tip.z);
+  if(tip.y<gh-.75){[EXC.boomA,EXC.stickA,EXC.bucketA]=prev;syncExc();tip=excTip()}
+  // 버킷을 오므리며 흙 속을 긁으면 연속 굴착
+  if(k.KeyO&&tip.y<gh+.12&&EXC.load<1&&!onRoad(tip.x,tip.z)){
+    EXC.digAcc+=dt;if(EXC.digAcc>.35){EXC.digAcc=0;digAtTip(tip,.22)}
+  }
+  if(k.KeyU&&EXC.load>.02&&EXC.bucketA>.15)excDump();
+  if(S.mode==='exc'){const tgt=V3(EXC.pos.x,EXC.pos.y+2,EXC.pos.z);const d=tgt.sub(controls.target).multiplyScalar(Math.min(1,dt*4));controls.target.add(d);camera.position.add(d)}
+}
+function digAtTip(tip,amt){
+  const fuel=S.tutorialDone?20000:0;if(fuel>S.money){toast('연료비가 부족합니다','bad');return false}
+  S.money-=fuel;
+  if(inRect(tip.x,tip.z,SITE))siteDigAt(tip.x,tip.z,'exc');else digTerrain(tip.x,tip.z,amt*1.6,1.7);
+  EXC.load=Math.min(1,EXC.load+amt*1.2);S.stats.digs++;puff(tip,6,0x7a5a3c);syncExc();onWorldChanged(true);return true;
+}
+function excDig(){
+  if(EXC.cd>0)return;EXC.cd=.45;const tip=excTip();const gh=surfaceAt(tip.x,tip.z);
+  if(tip.y>gh+.8){toast('버킷 끝을 땅 가까이 내리세요 (K 붐 내리기 · L 암 펴기)','bad');return}
+  if(EXC.load>=.99){toast('버킷이 가득 찼습니다. 옆으로 돌린 뒤 X로 흙을 내려놓으세요','bad');return}
+  if(onRoad(tip.x,tip.z)){toast('도로는 굴착할 수 없습니다','bad');return}
+  if(digAtTip(tip,.3))EXC.bucketA=Math.max(-2.3,EXC.bucketA-.45);syncExc();
+}
+function excDump(){
+  if(EXC.load<=.02){toast('버킷이 비어 있습니다');return}
+  const tip=excTip();
+  if(inRect(tip.x,tip.z,SITE,.8)){toast('발굴지 안에는 흙을 버릴 수 없습니다. 상부를 돌린(Q/E) 뒤 버리세요','bad');return}
+  if(onRoad(tip.x,tip.z)){toast('도로 위에는 흙을 버릴 수 없습니다','bad');return}
+  raiseTerrain(tip.x,tip.z,EXC.load*.5,1.7);puff(tip,10,0x7a5a3c);EXC.load=0;EXC.bucketA=Math.min(.6,EXC.bucketA+.8);syncExc();onWorldChanged(true);
+}
+
+// ================= 공룡 골격 생성 =================
+const SPECIES={
+  raptor:{name:'벨로키랍토르',rar:2,wt:5,biped:1,hip:.8,body:.75,neck:.4,neckUp:.28,skull:.3,skullH:.12,tail:1.2,arm:.45,T:.045,teeth:1},
+  parasaur:{name:'파라사우롤로푸스',rar:3,wt:4,biped:1,hip:2.3,body:2.8,neck:1.2,neckUp:.75,skull:.95,skullH:.38,tail:4,arm:1.2,T:.15,crest:1},
+  trike:{name:'트리케라톱스',rar:4,wt:3,biped:0,hip:2.3,body:3.4,neck:.6,neckUp:.05,skull:2.0,skullH:.9,tail:2.6,arm:1.9,T:.21,frill:1,horns:1},
+  stego:{name:'스테고사우루스',rar:4,wt:3,biped:0,hip:2.8,body:3.4,neck:1.0,neckUp:-.35,skull:.55,skullH:.28,tail:3.6,arm:1.5,T:.18,plates:1},
+  trex:{name:'티라노사우루스',rar:5,wt:2,biped:1,hip:3.9,body:4.0,neck:1.0,neckUp:.45,skull:1.5,skullH:.75,tail:5.5,arm:.9,T:.2,teeth:1},
+  brachio:{name:'브라키오사우루스',rar:5,wt:1,biped:0,hip:4.6,body:5,neck:7.5,neckUp:6,skull:.85,skullH:.42,tail:6,arm:5.6,T:.33},
+};
+const PARTS=['skull','neck','spine','ribs','pelvis','foreleg','hindleg','tail'];
+const PART_N={skull:'두개골',neck:'목뼈',spine:'등뼈',ribs:'갈비뼈',pelvis:'골반',foreleg:'앞다리',hindleg:'뒷다리',tail:'꼬리뼈'};
+function seg(g,a,b,r,mat,knobA){const d=V3().subVectors(b,a);const len=d.length();if(len<1e-4)return;
+  const m=new THREE.Mesh(UNIT_CYL,mat);m.scale.set(r,len,r);m.position.copy(a).addScaledVector(d,.5);m.quaternion.setFromUnitVectors(V3(0,1,0),d.normalize());m.castShadow=m.receiveShadow=true;g.add(m);
+  const k=new THREE.Mesh(UNIT_SPH,mat);k.scale.setScalar(r*1.35);k.position.copy(b);k.castShadow=true;g.add(k);
+  if(knobA){const k2=k.clone();k2.position.copy(a);g.add(k2)}}
+function vertebraChain(g,curve,n,r0,r1,mat,spineH){
+  for(let i=0;i<n;i++){const a=curve.getPoint(i/n),b=curve.getPoint((i+.8)/n);const r=r0+(r1-r0)*i/Math.max(1,n-1);seg(g,a,b,r,mat);
+    if(spineH){const c=a.clone().lerp(b,.5);const s=new THREE.Mesh(UNIT_BOX,mat);s.scale.set(r*.7,r*spineH,r*.35);s.position.set(c.x,c.y+r*spineH*.5,c.z);s.castShadow=true;g.add(s)}}
+}
+function skullGroup(s,mat){
+  const g=new THREE.Group();const L=s.skull,H=s.skullH;const dark=col(0x241c14,.95);
+  const B=(sx,sy,sz,x,y,z,rz)=>{const m=new THREE.Mesh(UNIT_BOX,mat);m.scale.set(sx,sy,sz);m.position.set(x,y,z);if(rz)m.rotation.z=rz;g.add(m);return m};
+  B(L*.5,H,H*.8,L*.25,0,0);B(L*.55,H*.55,H*.5,L*.72,-H*.12,0);B(L*.9,H*.16,H*.55,L*.48,-H*.6,0,-.06);
+  for(const z of [-1,1]){const e=new THREE.Mesh(UNIT_SPH,dark);e.scale.setScalar(H*.16);e.position.set(L*.3,H*.15,z*H*.38);g.add(e);
+    const f=new THREE.Mesh(UNIT_SPH,dark);f.scale.set(L*.12,H*.14,H*.03);f.position.set(L*.56,-H*.05,z*H*.25);g.add(f)}
+  if(s.teeth){const tm=M('tooth',()=>std(0xe6d9bd,.5));for(let i=0;i<6;i++)for(const z of [-1,1]){const t=new THREE.Mesh(new THREE.ConeGeometry(H*.045,H*.18,5),tm);t.rotation.z=Math.PI;t.position.set(L*(.5+i*.08),-H*.45,z*H*.2);g.add(t)}}
+  if(s.frill){const f=new THREE.Mesh(new THREE.CylinderGeometry(H*1.15,H*1.15,.08,22),mat);f.rotation.z=Math.PI/2-.55;f.position.set(-L*.08,H*.55,0);g.add(f)}
+  if(s.horns){for(const z of [-1,1]){const h=new THREE.Mesh(new THREE.ConeGeometry(H*.13,H*1.25,8),mat);h.rotation.z=-1.1;h.position.set(L*.45,H*.8,z*H*.3);g.add(h)}
+    const n=new THREE.Mesh(new THREE.ConeGeometry(H*.1,H*.42,8),mat);n.rotation.z=-.6;n.position.set(L*.88,H*.25,0);g.add(n)}
+  if(s.crest)seg(g,V3(L*.2,H*.4,0),V3(-L*.95,H*1.35,0),H*.15,mat,true);
+  g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});return g;
+}
+function buildSkeleton(spId,parts){
+  const s=SPECIES[spId],mat=boneMat(),T=s.T,P={};const want=p=>!parts||parts.includes(p);
+  const hip=V3(0,s.hip,0),shY=s.biped?s.hip+s.body*.1:s.arm,sh=V3(s.body,shY,0);
+  const nh=Math.max(s.neck*.45,Math.sqrt(Math.max(0,s.neck*s.neck-s.neckUp*s.neckUp)));
+  const head=V3(s.body+nh,shY+s.neckUp,0);
+  const spineC=new THREE.QuadraticBezierCurve3(hip,V3(s.body*.5,Math.max(s.hip,shY)+T*1.5,0),sh);
+  if(want('spine')){const g=new THREE.Group();vertebraChain(g,spineC,Math.max(6,Math.round(s.body/(T*2.3))),T,T*.9,mat,3);
+    if(s.plates)for(let i=0;i<9;i++){const p=spineC.getPoint(.08+i*.1);const c=new THREE.Mesh(new THREE.ConeGeometry(T*2.6,T*(5+4*Math.sin(i/8*Math.PI)),4),mat);c.scale.z=.18;c.position.set(p.x,p.y+T*3,(i%2?1:-1)*T*.6);c.castShadow=true;g.add(c)}
+    P.spine=g}
+  if(want('neck')){const g=new THREE.Group();const nc=new THREE.QuadraticBezierCurve3(sh,V3(sh.x+nh*.55,sh.y+s.neckUp*.35,0),head);vertebraChain(g,nc,Math.max(4,Math.round(s.neck/(T*2))),T*.85,T*.6,mat,1.6);P.neck=g}
+  if(want('skull')){const g=skullGroup(s,mat);g.position.copy(head);g.rotation.z=-.12;P.skull=g}
+  if(want('ribs')){const g=new THREE.Group();const n=Math.max(6,Math.min(16,Math.round(s.body/(T*2.8))));
+    for(let i=0;i<n;i++){const u=i/(n-1);const p=spineC.getPoint(.15+.7*u);const R=s.body*.19*(.35+.65*Math.sin(Math.PI*(.12+.88*u)));
+      const m=new THREE.Mesh(new THREE.TorusGeometry(R,T*.22,5,14,Math.PI),mat);m.rotation.set(0,Math.PI/2,Math.PI);m.position.copy(p);m.castShadow=true;g.add(m)}
+    P.ribs=g}
+  if(want('pelvis')){const g=new THREE.Group();const m=new THREE.Mesh(UNIT_SPH,mat);m.scale.set(T*3.4,T*3,T*2.6);m.position.copy(hip);g.add(m);
+    for(const z of [-1,1]){seg(g,V3(0,s.hip,z*T*1.5),V3(-T*3,s.hip-T*6,z*T*1.8),T*.6,mat);seg(g,V3(0,s.hip,z*T*1.5),V3(T*3.5,s.hip-T*6,z*T*1.6),T*.6,mat)}
+    g.traverse(o=>{if(o.isMesh)o.castShadow=true});P.pelvis=g}
+  if(want('hindleg')){const g=new THREE.Group();const H=s.hip;
+    for(const sd of [-1,1]){const z=sd*T*3;const hj=V3(0,H-T*.5,z);
+      const kn=s.biped?V3(H*.13,H*.55,z):V3(H*.05,H*.52,z),an=s.biped?V3(-H*.07,H*.2,z):V3(-H*.02,H*.12,z),ft=s.biped?V3(H*.12,.04,z):V3(H*.06,.04,z);
+      seg(g,hj,kn,T*1.15,mat,true);seg(g,kn,an,T*.95,mat);seg(g,an,ft,T*.6,mat);
+      for(const t of [-1,0,1])seg(g,ft,V3(ft.x+H*.09,.03,z+t*T*1.6),T*.3,mat)}
+    P.hindleg=g}
+  if(want('foreleg')){const g=new THREE.Group();
+    for(const sd of [-1,1]){
+      if(s.biped){const sj=V3(s.body*.9,shY-T*2.5,sd*T*2.4),el=V3(sj.x+s.arm*.2,sj.y-s.arm*.55,sj.z),hd=V3(el.x+s.arm*.4,el.y-s.arm*.1,sj.z);
+        seg(g,sj,el,T*.5,mat,true);seg(g,el,hd,T*.4,mat);for(const t of [-1,1])seg(g,hd,V3(hd.x+s.arm*.12,hd.y-s.arm*.08,hd.z+t*T*.5),T*.18,mat)}
+      else{const z=sd*T*3;const sj=V3(s.body*.95,shY-T,z),el=V3(s.body*.88,shY*.55,z),wr=V3(s.body*.95,shY*.16,z),ft=V3(s.body*1.0,.04,z);
+        seg(g,sj,el,T*1.0,mat,true);seg(g,el,wr,T*.85,mat);seg(g,wr,ft,T*.55,mat)}}
+    P.foreleg=g}
+  if(want('tail')){const g=new THREE.Group();const tc=new THREE.QuadraticBezierCurve3(hip,V3(-s.tail*.45,s.hip*(s.biped?1:.85),0),V3(-s.tail,s.hip*(s.biped?.72:.3),0));
+    vertebraChain(g,tc,clamp(Math.round(s.tail/(T*1.9)),8,40),T*.95,T*.2,mat,2);
+    if(s.plates)for(let i=0;i<4;i++){const p=tc.getPoint(.9+i*.025);const c=new THREE.Mesh(new THREE.ConeGeometry(T*.4,T*5,6),mat);c.position.copy(p);c.rotation.x=(i%2?1:-1)*1.1;c.castShadow=true;g.add(c)}
+    P.tail=g}
+  return P;
+}
+const DS=.55;
+function buildExhibitMesh(ex){
+  const root=new THREE.Group();if(!ex)return root;
+  const s=SPECIES[ex.sp];const P=buildSkeleton(ex.sp,ex.parts);const sk=new THREE.Group();for(const k in P)sk.add(P[k]);
+  sk.scale.setScalar(DS);sk.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(sk);const len=Math.max(1,box.max.x-box.min.x);
+  const ph=.35,pw=len+.8,pd=Math.max(1.6,box.max.z-box.min.z+1.4);
+  addBox(root,pw,ph,pd,0,ph/2,0,col(0x3a3e44,.5));addBox(root,pw+.12,.04,pd+.12,0,.02,0,col(0x24272b,.6));
+  sk.position.set(-(box.min.x+box.max.x)/2,ph,0);root.add(sk);
+  const steel=col(0x2a2e33,.4,.7);
+  for(const p of [V3(0,s.hip,0),V3(s.body,s.biped?s.hip+s.body*.1:s.arm,0)]){const x=p.x*DS+sk.position.x,yy=p.y*DS+ph;seg(root,V3(x,ph,0),V3(x,yy-.04,0),.025,steel)}
+  const lab=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.4),new THREE.MeshBasicMaterial({map:labelTexture([s.name,`골격 ${ex.parts.length}/8 · 보존 ${Math.round(ex.q*100)}%`],'rgba(24,26,30,.95)')}));
+  lab.position.set(0,ph/2,pd/2+.012);root.add(lab);
+  return root;
+}
+
+// ================= 발굴지 =================
+const site={top:new Float32Array(SITE.nx*SITE.nz),bones:[],mesh:null,radarUntil:0,radarOn:false,sp:null,permit:0};
+const DIGT={pick:{a:.3,d:12,r:1,iv:.3,n:'곡괭이'},trowel:{a:.14,d:4,r:0,iv:.18,n:'모종삽'},brush:{a:.06,d:0,r:1,iv:.1,n:'붓'},exc:{a:.4,d:25,r:2,iv:0,n:'포크레인'}};
+function siteCellCenter(i){const ix=i%SITE.nx,iz=(i/SITE.nx)|0;return[SITE.x0+(ix+.5)*SITE.cs,SITE.z0+(iz+.5)*SITE.cs]}
+function siteCellAt(x,z){const ix=Math.floor((x-SITE.x0)/SITE.cs),iz=Math.floor((z-SITE.z0)/SITE.cs);if(ix<0||iz<0||ix>=SITE.nx||iz>=SITE.nz)return-1;return iz*SITE.nx+ix}
+const _m4=new THREE.Matrix4(),_c3=new THREE.Color();
+function soilHex(t){return t>-.3?0x5d4532:t>-.8?0x8a6a46:t>-1.4?0xa8875d:0x9b6c4b}
+function hash1(i){const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+function updateSiteCell(i){
+  const [x,z]=siteCellCenter(i);const t=site.top[i];const h=Math.max(.01,t-SITE.bottom);
+  _m4.makeScale(SITE.cs*.995,h,SITE.cs*.995);_m4.setPosition(x,(t+SITE.bottom)/2,z);site.mesh.setMatrixAt(i,_m4);
+  _c3.setHex(soilHex(t)).convertSRGBToLinear();const j=.88+hash1(i)*.2;_c3.multiplyScalar(j);
+  if(site.radarOn){let best=0;for(const b of site.bones){if(b.collected||!b.cellSet.has(i))continue;best=Math.max(best,1-clamp((t-b.top)/1.6,0,1))}
+    if(best>0)_c3.lerp(new THREE.Color(0xff5a1f).convertSRGBToLinear(),.35+.5*best)}
+  site.mesh.setColorAt(i,_c3);
+}
+function refreshSiteAll(){for(let i=0;i<site.top.length;i++)updateSiteCell(i);site.mesh.instanceMatrix.needsUpdate=true;if(site.mesh.instanceColor)site.mesh.instanceColor.needsUpdate=true}
+function initSiteMesh(){
+  site.mesh=new THREE.InstancedMesh(UNIT_BOX,std(0xffffff,.97,0,{map:TEX.soil}),SITE.nx*SITE.nz);
+  site.mesh.castShadow=true;site.mesh.receiveShadow=true;site.mesh.frustumCulled=false;site.mesh.name='site';scene.add(site.mesh);
+  for(let i=0;i<site.top.length;i++)site.top[i]=-hash1(i+7)*.04;refreshSiteAll();
+}
+function makeSiteBone(d){
+  const P=buildSkeleton(d.sp,[d.part]);const pg=P[d.part];const grp=new THREE.Group();grp.add(pg);
+  pg.traverse(o=>{if(o.isMesh)o.material=boneSiteMat()});
+  if(d.part==='hindleg'||d.part==='foreleg'||d.part==='ribs')pg.rotation.x=Math.PI/2;
+  grp.updateMatrixWorld(true);let box=new THREE.Box3().setFromObject(pg);const size=box.getSize(V3());
+  const ctr=box.getCenter(V3());pg.position.sub(ctr);
+  const sc=Math.min(.6,2.8/Math.max(size.x,size.z,.01));grp.scale.setScalar(sc);
+  grp.rotation.y=d.yaw;grp.position.set(d.x,0,d.z);grp.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(grp);grp.position.y+=d.depth-box.max.y;grp.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(grp);
+  const b=Object.assign({},d,{mesh:grp,top:box.max.y,stop:box.max.y-(box.max.y-box.min.y)*.62,cells:[],cellSet:new Set()});
+  for(let i=0;i<site.top.length;i++){const [x,z]=siteCellCenter(i);if(x>box.min.x-.12&&x<box.max.x+.12&&z>box.min.z-.12&&z<box.max.z+.12){b.cells.push(i);b.cellSet.add(i)}}
+  grp.traverse(o=>{if(o.isMesh){o.userData.bone=b;o.castShadow=true;o.receiveShadow=true}});
+  return b;
+}
+function addSiteBone(b){scene.add(b.mesh);site.bones.push(b)}
+function clearSite(){for(const b of site.bones)scene.remove(b.mesh);site.bones=[]}
+function pickSpecies(){const ks=Object.keys(SPECIES);let tot=0;for(const k of ks)tot+=SPECIES[k].wt;let r=Math.random()*tot;for(const k of ks){r-=SPECIES[k].wt;if(r<=0)return k}return ks[0]}
+function ownedParts(sp){const s=new Set();for(const b of S.bones)if(b.sp===sp)s.add(b.part);return s}
+function newSite(){
+  clearSite();for(let i=0;i<site.top.length;i++)site.top[i]=-hash1(i+site.permit*31)*.04;
+  const sp=pickSpecies();site.sp=sp;site.permit++;
+  const have=ownedParts(sp);const pool=PARTS.slice().sort(()=>Math.random()-.5).sort((a,b)=>(have.has(a)?1:0)-(have.has(b)?1:0));
+  const n=3+((Math.random()*3)|0);let placed=0;
+  for(const part of pool){if(placed>=n)break;
+    for(let tr=0;tr<40;tr++){const d={sp,part,x:rnd(SITE.x0+1.4,SITE.x1-1.4),z:rnd(SITE.z0+1.2,SITE.z1-1.2),yaw:rnd(0,Math.PI),depth:-rnd(.55,1.35),cond:100,collected:false};
+      const b=makeSiteBone(d);const clash=site.bones.some(o=>b.cells.some(c=>o.cellSet.has(c)))||b.cells.length===0||b.cells.length>110;
+      if(!clash){addSiteBone(b);placed++;break}}}
+  refreshSiteAll();
+}
+function boneExposure(b){let ok=0;const th=b.top-(b.top-b.stop)*.5;for(const i of b.cells)if(site.top[i]<=th+.005)ok++;return b.cells.length?ok/b.cells.length:0}
+function siteDigCell(i,tool,scale){
+  const T=DIGT[tool];let nt=site.top[i]-T.a*scale;let hitB=null;
+  for(const b of site.bones){if(b.collected||!b.cellSet.has(i))continue;if(nt<b.top-.005){hitB=b;nt=Math.max(nt,b.stop)}}
+  nt=Math.max(nt,SITE.floor);
+  if(nt<site.top[i]){site.top[i]=nt;updateSiteCell(i)}
+  return hitB;
+}
+function siteDigAt(x,z,tool){
+  const i=siteCellAt(x,z);if(i<0)return;const T=DIGT[tool];const ix=i%SITE.nx,iz=(i/SITE.nx)|0;const hits=new Set();
+  for(let dz=-T.r;dz<=T.r;dz++)for(let dx=-T.r;dx<=T.r;dx++){const jx=ix+dx,jz=iz+dz;if(jx<0||jz<0||jx>=SITE.nx||jz>=SITE.nz)continue;
+    const sc=(dx||dz)&&tool!=='brush'?.5:1;const h=siteDigCell(jz*SITE.nx+jx,tool,sc);if(h&&(!(dx||dz)||tool==='exc'))hits.add(h)}
+  for(const b of hits)damageBone(b,T.d);
+  site.mesh.instanceMatrix.needsUpdate=true;if(site.mesh.instanceColor)site.mesh.instanceColor.needsUpdate=true;
+  const [cx,cz]=siteCellCenter(i);puff(V3(cx,site.top[i]+.1,cz),tool==='brush'?2:4,0x8a6a46);
+}
+function damageBone(b,d){
+  if(d<=0)return;b.cond=Math.max(5,b.cond-d);
+  toast(`화석 손상! ${SPECIES[b.sp].name} ${PART_N[b.part]} 보존 상태 ${b.cond}% — 뼈 가까이에서는 붓을 쓰세요`,'bad');
+  const p=new THREE.Vector3();b.mesh.getWorldPosition(p);puff(V3(p.x,b.top+.05,p.z),5,0xe8dcc0);
+}
+function tryCollect(b){
+  const ex=boneExposure(b);
+  if(ex<.85){toast(`아직 흙에 묻혀 있습니다 (노출 ${Math.round(ex*100)}%). 붓으로 주변 흙을 더 걷어 내세요`);return}
+  b.collected=true;scene.remove(b.mesh);
+  S.bones.push({id:S.boneSeq++,sp:b.sp,part:b.part,cond:b.cond,cleaned:false,restored:false});S.stats.found++;
+  toast(`${SPECIES[b.sp].name} ${PART_N[b.part]} 수습 완료 (보존 ${b.cond}%) → 연구실로 이동`,'good');
+  if(site.bones.every(x=>x.collected))toast('이 발굴지의 화석을 모두 수습했습니다. 새 발굴 허가를 받을 수 있습니다','good');
+  refreshSiteAll();onWorldChanged();
+}
+function setRadar(on){site.radarOn=on;refreshSiteAll()}
+function siteData(){return{top:Array.from(site.top,v=>Math.round(v*1000)/1000),sp:site.sp,permit:site.permit,bones:site.bones.map(b=>({sp:b.sp,part:b.part,x:b.x,z:b.z,yaw:b.yaw,depth:b.depth,cond:b.cond,collected:b.collected}))}}
+function loadSite(d){clearSite();site.top.set(d.top);site.sp=d.sp;site.permit=d.permit||1;for(const bd of d.bones){const b=makeSiteBone(bd);b.collected=bd.collected;if(!b.collected)addSiteBone(b);else site.bones.push(b)}refreshSiteAll()}
+
+// ================= 용도·평가·경제 =================
+const PURPOSES={
+  none:{n:'미지정',req:[]},
+  house:{n:'주택 (오픈하우스)',rate:.003,req:[['문 1개 이상',s=>s.doors>=1],['지붕이 기초의 60% 이상 덮음',s=>s.roofed>=.6],['가구 3개 이상',s=>s.furn>=3]]},
+  apart:{n:'아파트·빌라',rate:.007,req:[['3층 이상',s=>s.levels>=3],['계단 1개 이상',s=>s.stairs>=1],['문 1개 이상',s=>s.doors>=1],['침대 2개 이상',s=>(s.items.bed||0)>=2]]},
+  shop:{n:'상점',rate:.006,req:[['문 1개 이상',s=>s.doors>=1],['창문 2개 이상',s=>s.windows>=2],['상점 가구 2개 이상',s=>s.cats['상점']>=2]]},
+  office:{n:'사무실',rate:.005,req:[['2층 이상',s=>s.levels>=2],['창문 4개 이상',s=>s.windows>=4],['사무용 책상 2개 이상',s=>(s.items.officedesk||0)>=2]]},
+  school:{n:'학교',rate:.004,req:[['2층 이상',s=>s.levels>=2],['기초 24칸 이상',s=>s.area>=24],['학생 책상 6개 이상',s=>(s.items.schooldesk||0)>=6],['화이트보드 1개 이상',s=>(s.items.whiteboard||0)>=1]]},
+  library:{n:'도서관',rate:.005,req:[['서가 점수 4 이상 (책장 1, 서가 2)',s=>s.shelves>=4],['창문 2개 이상',s=>s.windows>=2]]},
+  stadium:{n:'경기장',rate:.009,req:[['기초 60칸 이상',s=>s.area>=60],['관람석(벤치) 6개 이상',s=>(s.items.bench||0)>=6]]},
+  landmark:{n:'랜드마크·기념비',rate:.008,req:[['8층 높이 이상',s=>s.levels>=8]]},
+  museum:{n:'박물관',museum:true,req:[['문 1개 이상',s=>s.doors>=1],['공룡 골격 1점 이상 전시',s=>s.exhibits.length>=1]]},
+};
+function plotStats(p){
+  const st={area:0,levels:0,doors:0,windows:0,stairs:0,roofed:0,mats:new Set(),painted:0,furn:0,cats:{},items:{},shelves:0,cost:0,museumPts:0,exhibits:[],elems:0};
+  const found=new Set(),roofXZ=new Set();
+  for(const e of elems.values()){if(e.plot!==p.id)continue;st.elems++;st.cost+=e.cost;st.mats.add(e.mat);const c=ET[e.type].cat;
+    if(e.type==='foundation')found.add(e.x+','+e.z);
+    if(c==='W'||c==='C')st.levels=Math.max(st.levels,e.L+1);
+    if(e.type==='door')st.doors++;if(e.type==='window')st.windows++;if(e.type==='stairs')st.stairs++;
+    if(e.type==='roof'||e.type==='proof')roofXZ.add(e.x+','+e.z);if(e.color||e.finish)st.painted++}
+  st.area=found.size;let rc=0;for(const k of found)if(roofXZ.has(k))rc++;st.roofed=st.area?rc/st.area:0;
+  for(const f of furn.values()){if(f.plot!==p.id)continue;st.cost+=f.cost;
+    if(f.exId){const ex=S.exhibits.find(x=>x.id===f.exId);if(ex)st.exhibits.push(ex);continue}
+    const it=FURN[f.item];st.furn++;st.cats[it.cat]=(st.cats[it.cat]||0)+1;st.items[f.item]=(st.items[f.item]||0)+1;st.shelves+=it.shelf||0;st.museumPts+=it.museum||0}
+  return st;
+}
+function plotScore(p,st){
+  const ps=plotStructure(p.id);
+  const safety=st.elems?Math.round(30*clamp((1-ps.max)/.4,0,1)):0;
+  const comp=Math.round(15*st.roofed+(st.doors?5:0)+Math.min(5,st.windows*2.5));
+  const design=Math.round(Math.min(20,st.mats.size*4+st.painted*1.2));
+  const interior=Math.round(Math.min(15,st.furn*1.5)+Math.min(10,Object.keys(st.cats).length*2));
+  return{safety,comp,design,interior,total:safety+comp+design+interior,ps};
+}
+function museumCalc(p,st,sc){
+  let attr=0;for(const ex of st.exhibits)attr+=SPECIES[ex.sp].rar*14*ex.q*(ex.parts.length/8+.25);
+  attr+=st.museumPts+sc.total*.5;const base=Math.round(attr*1.6);
+  const demand=clamp(1.45-p.ticket/22000,.15,1.25);const visitors=Math.round(base*demand);
+  return{visitors,revenue:visitors*p.ticket,attr};
+}
+function plotIncome(p){
+  if(!p.owned||p.purpose==='none')return{amt:0,unmet:[]};
+  const st=plotStats(p),pu=PURPOSES[p.purpose];const unmet=pu.req.filter(r=>!r[1](st)).map(r=>r[0]);
+  const sc=plotScore(p,st);
+  if(unmet.length)return{amt:0,unmet,st,sc};
+  if(pu.museum){const m=museumCalc(p,st,sc);return{amt:m.revenue,visitors:m.visitors,unmet,st,sc}}
+  return{amt:Math.round(st.cost*pu.rate*(.5+sc.total/100)),unmet,st,sc};
+}
+function salePrice(p){const st=plotStats(p),sc=plotScore(p,st);return Math.round(st.cost*(1.1+sc.total/100*.9)+p.price*1.1)}
+function dayTick(){
+  S.day++;let total=0;const items=[];
+  for(const p of PLOTS){const r=plotIncome(p);if(r.amt>0){total+=r.amt;items.push({name:p.name,amt:r.amt,v:r.visitors})}}
+  S.money+=total;S.stats.earned+=total;S.lastReport={day:S.day-1,total,items};
+  if(total>0)toast(`${S.day-1}일차 정산 +${won(total)}`+(items.find(i=>i.v)?` · 박물관 관람객 ${items.filter(i=>i.v).reduce((a,b)=>a+b.v,0)}명`:''),'good');
+  uiDirty=true;
+}
+function buyPlot(id){
+  const p=plotById(id);if(p.owned)return;
+  if(!S.tutorialDone){toast('튜토리얼을 마친 뒤 구매할 수 있습니다','bad');return}
+  if(p.price>S.money){toast(`자금이 부족합니다 (필요 ${won(p.price)})`,'bad');return}
+  S.money-=p.price;p.owned=true;plotVisual(p);S.selPlot=id;toast(`${p.name} 구매 완료`,'good');onWorldChanged();
+}
+function sellPlot(id){
+  const p=plotById(id);const price=salePrice(p);
+  for(const f of [...furn.values()])if(f.plot===id)removeFurn(f,'silent');
+  for(const e of [...elems.values()])if(e.plot===id)removeElem(e,'silent');
+  p.owned=false;p.purpose='none';S.money+=price;S.undo=[];plotVisual(p);checkStructure();
+  toast(`${p.name}을(를) ${won(price)}에 매각했습니다`,'good');onWorldChanged();
+}
+
+// ================= 방문객 =================
+const people=[];let peopleT=0;
+function personMesh(){const g=new THREE.Group();const sh=new THREE.Color().setHSL(Math.random(),.45,.45).getHex();
+  cy(g,.17,.2,.62,0,1.0,0,sh,.9);const hd=new THREE.Mesh(UNIT_SPH,col(0xd8ae8a,.8));hd.scale.setScalar(.13);hd.position.y=1.45;hd.castShadow=true;g.add(hd);
+  for(const x of [-.08,.08])bx(g,.09,.7,.12,x,.35,0,0x2d3440,.9);return g}
+function plotCells(pid){const r=[];for(const e of elems.values())if(e.plot===pid&&e.type==='foundation')r.push([e.x*CELL+1,e.z*CELL+1]);return r}
+function updatePeople(dt){
+  peopleT-=dt;
+  if(peopleT<=0){peopleT=1.2;
+    for(const p of PLOTS){
+      let want=0;if(p.owned&&p.purpose!=='none'){const r=plotIncome(p);if(r.amt>0)want=r.visitors?Math.min(16,Math.ceil(r.visitors/35)):({house:2,apart:5,shop:4,office:5,school:8,library:4,stadium:14,landmark:6}[p.purpose]||0)}
+      const cells=want?plotCells(p.id):[];if(!cells.length)want=0;
+      const mine=people.filter(q=>q.plot===p.id);
+      while(mine.length<want){const c=cells[(Math.random()*cells.length)|0];const m=personMesh();m.position.set(c[0]+rnd(-.6,.6),BASE,c[1]+rnd(-.6,.6));scene.add(m);const q={plot:p.id,m,t:null,wait:rnd(0,2),ph:Math.random()*6};people.push(q);mine.push(q)}
+      while(mine.length>want){const q=mine.pop();scene.remove(q.m);people.splice(people.indexOf(q),1)}
+      for(const q of mine)q.cells=cells;
+    }
+  }
+  for(const q of people){
+    if(q.wait>0){q.wait-=dt;continue}
+    if(!q.t){const c=q.cells[(Math.random()*q.cells.length)|0];q.t=V3(c[0]+rnd(-.7,.7),BASE,c[1]+rnd(-.7,.7))}
+    const d=V3().subVectors(q.t,q.m.position);d.y=0;const L=d.length();
+    if(L<.1){q.t=null;q.wait=rnd(1,4);continue}
+    q.m.position.addScaledVector(d,Math.min(1,1.1*dt/L));q.m.rotation.y=Math.atan2(d.x,d.z);q.ph+=dt*9;q.m.position.y=BASE+Math.abs(Math.sin(q.ph))*.04;
+    q.m.visible=!(S.cutaway&&S.workLevel<0);
+  }
+}
+
+// ================= UI =================
+const toastsEl=$('toasts');
+function toast(msg,cls){const d=document.createElement('div');d.className='toast panel'+(cls?' '+cls:'');d.textContent=msg;toastsEl.appendChild(d);
+  while(toastsEl.children.length>4)toastsEl.firstChild.remove();setTimeout(()=>d.remove(),cls==='bad'?4200:3200)}
+let uiDirty=true;
+function onWorldChanged(light){uiDirty=true;renderTop()}
+function renderTop(){$('money').textContent=won(S.money);$('dayv').textContent=S.tutorialDone?`${S.day}일차`:'튜토리얼 중';
+  document.querySelectorAll('.mbtn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.mode)))}
+function pr(v){return v?'true':'false'}
+function meterHTML(r){const pct=isFinite(r)?Math.min(100,Math.round(r*100)):100;const c=['#3fa65a','#d8c22a','#e6801f','#d63a24'][r<.5?0:r<.8?1:r<.95?2:3];return `<div class="meter"><i style="width:${pct}%;background:${c}"></i></div>`}
+function levelCtl(){return `<h3>작업 층</h3><div class="row sp"><button class="btn" data-act="lvl" data-v="-1" aria-label="아래층">▼</button><span class="lvl">${levelName(S.workLevel)}</span><button class="btn" data-act="lvl" data-v="1" aria-label="위층">▲</button></div><div class="note">PageUp·PageDown 또는 [ ] 키. 2층 바닥판은 2층을 고른 뒤 1층 벽 위에 놓습니다.</div>`}
+function renderSide(){
+  const el=$('side');let h='';
+  if(S.mode==='build'){
+    h+='<h3>부재</h3><div class="grid2">';
+    for(const t of ET_ORDER){const m=(S.mat==='glass'&&ET[t].cat!=='W')?'concrete':S.mat;h+=`<button class="tool" data-act="tool" data-v="${t}" aria-pressed="${pr(S.tool===t)}">${ET[t].n}<span class="c">${won(eCost(t,m))}</span></button>`}
+    h+=`<button class="tool" data-act="tool" data-v="demolish" aria-pressed="${pr(S.tool==='demolish')}">철거<span class="c">비용 50% 환급</span></button></div>`;
+    h+='<h3>재료</h3><div class="grid2">';
+    for(const k in MATS){const m=MATS[k];h+=`<button class="tool" data-act="mat" data-v="${k}" aria-pressed="${pr(S.mat===k)}"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${m.sw};margin-right:5px;vertical-align:-1px"></span>${m.n}<span class="c">강도 ×${m.s} · 무게 ×${m.d}</span></button>`}
+    h+='</div>'+levelCtl();
+    h+=`<h3>보기</h3><div class="grid2"><button class="tool" data-act="stress" aria-pressed="${pr(S.stressView)}">하중 보기<span class="c">H 키</span></button><button class="tool" data-act="cutaway" aria-pressed="${pr(S.cutaway)}">위층 숨기기<span class="c">C 키</span></button><button class="tool" data-act="rot">방향 돌리기<span class="c">R 키 · ${S.rot*90}°</span></button></div>`;
+    h+='<div class="note">왼쪽 클릭으로 놓고, 누른 채 끌면 여러 칸을 연달아 놓습니다. 오른쪽 드래그로 회전, 휠로 확대합니다.</div>';
+  }else if(S.mode==='interior'){
+    const tools=[['place','배치'],['move','선택·이동'],['paint','벽 칠하기'],['finish','바닥재'],['delete','삭제']];
+    h+='<h3>도구</h3><div class="grid3">'+tools.map(([k,n])=>`<button class="tool" data-act="ftool" data-v="${k}" aria-pressed="${pr(S.fTool===k)}">${n}</button>`).join('')+'</div>';
+    if(S.fTool==='place'){
+      h+='<h3>분류</h3><div class="row" style="flex-wrap:wrap">'+FCATS.map(c=>`<button class="tool" data-act="fcat" data-v="${c}" aria-pressed="${pr(S.fCat===c)}">${c}</button>`).join('')+'</div><h3>품목</h3><div class="grid2">';
+      if(S.fCat==='전시물'){const list=S.exhibits.filter(x=>!x.placed);
+        if(!list.length)h+='<div class="note" style="grid-column:1/-1">전시할 골격이 없습니다. 화석 발굴 모드에서 뼈를 수습·세척한 뒤 골격을 조립하세요.</div>';
+        for(const ex of list)h+=`<button class="tool" data-act="fitem" data-v="ex:${ex.id}" aria-pressed="${pr(S.fItem==='ex:'+ex.id)}">${SPECIES[ex.sp].name}<span class="c">골격 ${ex.parts.length}/8 · 보존 ${Math.round(ex.q*100)}%</span></button>`}
+      else for(const k in FURN){const it=FURN[k];if(it.cat!==S.fCat)continue;h+=`<button class="tool" data-act="fitem" data-v="${k}" aria-pressed="${pr(S.fItem===k)}">${it.n}<span class="c">${won(it.cost)}</span></button>`}
+      h+='</div><div class="note">R 키로 90° 회전, Shift+R로 15° 회전합니다. 공룡 골격은 박물관 용도 부지에만 놓을 수 있습니다.</div>';
+    }else if(S.fTool==='paint'){
+      const pal=['#e9e2d4','#f4f1ea','#cfd8dc','#9fb4c7','#2f4f6f','#b5c99a','#5f7a52','#e6c99a','#d9a07a','#a14a3b','#6b4a3a','#3a3a3c'];
+      h+='<h3>벽 색상 (5만 원/면)</h3><div class="row" style="flex-wrap:wrap">'+pal.map(c=>`<button class="sw" style="background:${c}" data-act="paint" data-v="${c}" aria-pressed="${pr(S.paint===c)}" aria-label="${c}"></button>`).join('')+'</div><div class="note">벽이나 기둥을 클릭하면 칠해집니다.</div>';
+    }else if(S.fTool==='finish'){
+      h+='<h3>바닥재</h3><div class="grid2">'+Object.entries(FINISH).map(([k,f])=>`<button class="tool" data-act="finish" data-v="${k}" aria-pressed="${pr(S.finish===k)}">${f.n}<span class="c">${won(f.cost)}/칸</span></button>`).join('')+'</div><div class="note">기초나 바닥판 윗면을 클릭합니다.</div>';
+    }else if(S.fTool==='move'){h+='<div class="note">가구를 클릭하면 들어 올립니다. 원하는 곳을 다시 클릭해 내려놓으세요. 들고 있는 동안 R로 회전, Delete로 삭제, Esc로 취소합니다.</div>'}
+    else h+='<div class="note">삭제할 가구를 클릭하세요. 가격의 70%를 돌려받습니다.</div>';
+    h+=levelCtl()+`<h3>보기</h3><button class="tool" data-act="cutaway" aria-pressed="${pr(S.cutaway)}">위층 숨기기 (내부 보기)<span class="c">C 키 · 작업 층보다 위를 감춥니다</span></button>`;
+  }else if(S.mode==='exc'){
+    h+='<h3>포크레인 조종</h3><div class="keys"><span><kbd>W</kbd><kbd>S</kbd></span><span>전진 · 후진</span><span><kbd>A</kbd><kbd>D</kbd></span><span>차체 회전</span><span><kbd>Q</kbd><kbd>E</kbd></span><span>상부(운전석) 선회</span><span><kbd>I</kbd><kbd>K</kbd></span><span>붐 올리기 · 내리기</span><span><kbd>J</kbd><kbd>L</kbd></span><span>암 접기 · 펴기</span><span><kbd>U</kbd><kbd>O</kbd></span><span>버킷 펴기 · 오므리기</span><span><kbd>Space</kbd></span><span>굴착 한 번</span><span><kbd>X</kbd></span><span>흙 내려놓기</span></div>';
+    h+='<div class="note">버킷 끝을 땅에 대고 O로 오므리며 긁어도 흙이 파입니다. 파낸 흙은 버킷을 편(U) 채 다른 곳에 쏟으세요. 굴착 1회 연료비 2만 원.</div>';
+    h+='<h3>빠른 이동</h3><div class="grid2"><button class="tool" data-act="excgo" data-v="site">발굴지 앞으로</button><button class="tool" data-act="excgo" data-v="plots">건축 부지 쪽으로</button></div>';
+    h+='<div class="note">부지 안 칸을 0.35m 이상 파고 그 위에 기초를 놓으면 터파기 효과로 기초 지지력이 50% 늘어납니다.</div>';
+  }else if(S.mode==='fossil'){
+    const tools=[['pick','곡괭이','빠름 · 화석 손상 큼'],['trowel','모종삽','보통 · 손상 작음'],['brush','붓','느림 · 손상 없음'],['collect','수습','드러난 뼈를 들어 올림']];
+    h+='<h3>발굴 도구</h3><div class="grid2">'+tools.map(([k,n,c])=>`<button class="tool" data-act="dtool" data-v="${k}" aria-pressed="${pr(S.digTool===k)}">${n}<span class="c">${c}</span></button>`).join('')+'</div>';
+    h+=`<div class="grid2" style="margin-top:5px"><button class="tool" data-act="radar" ${site.radarOn?'disabled':''}>지하 탐사 레이더<span class="c">10만 원 · 6초간 표시</span></button><button class="tool" data-act="permit">새 발굴 허가<span class="c">200만 원</span></button></div>`;
+    h+='<div class="note">흙 위를 누르고 있으면 계속 팝니다. 뼈 위층에 닿으면 곡괭이·모종삽은 화석을 깨뜨립니다. 겉흙은 곡괭이나 포크레인으로, 뼈 주변은 붓으로 걷어 내세요.</div>';
+    h+='<h3>연구실 — 수습한 뼈</h3>';
+    if(!S.bones.length)h+='<div class="note">아직 수습한 뼈가 없습니다.</div>';
+    else{h+='<div class="list">';for(const b of S.bones){h+=`<div class="item"><div class="row sp"><span class="t">${SPECIES[b.sp].name} ${PART_N[b.part]}</span><span class="tag">${b.cond}%</span></div><div class="s">${b.restored?'세척·복원 완료':b.cleaned?'세척 완료':'흙이 묻은 상태'}</div><div class="row" style="margin-top:5px">${!b.cleaned?`<button class="btn" data-act="clean" data-v="${b.id}">세척 5만 원</button>`:''}${b.cleaned&&!b.restored?`<button class="btn" data-act="restore" data-v="${b.id}">복원 40만 원 (+30%)</button>`:''}</div></div>`}h+='</div>'}
+    const bySp={};for(const b of S.bones)if(b.cleaned){(bySp[b.sp]=bySp[b.sp]||new Set()).add(b.part)}
+    h+='<h3>골격 조립</h3>';const sps=Object.keys(bySp);
+    if(!sps.length)h+='<div class="note">같은 종의 세척된 뼈가 4부위 이상 모이면 조립할 수 있습니다.</div>';
+    for(const sp of sps){const n=bySp[sp].size;h+=`<div class="item"><div class="row sp"><span class="t">${SPECIES[sp].name}</span><span class="tag">${n}/8 부위</span></div><div class="row" style="margin-top:5px"><button class="btn ${n>=4?'primary':''}" data-act="assemble" data-v="${sp}" ${n>=4?'':'disabled'}>골격 조립하기</button></div></div>`}
+  }else if(S.mode==='mgmt'){
+    h+='<h3>부지 목록</h3><div class="list">';
+    for(const p of PLOTS){const r=p.owned?plotIncome(p):null;
+      h+=`<div class="item" style="${S.selPlot===p.id?'border-color:var(--accent)':''}"><div class="row sp"><span class="t">${p.name}</span><span class="tag ${p.owned?'ok':''}">${p.owned?'소유':'매물'}</span></div><div class="s">${p.w*CELL}×${p.h*CELL}m · ${p.owned?PURPOSES[p.purpose].n+(r.amt?` · 하루 ${won(r.amt)}`:''):won(p.price)}</div><div class="row" style="margin-top:5px"><button class="btn" data-act="selPlot" data-v="${p.id}">자세히</button>${!p.owned?`<button class="btn primary" data-act="buy" data-v="${p.id}">구매</button>`:''}</div></div>`}
+    h+='</div>';
+    if(S.lastReport)h+=`<h3>최근 정산 (${S.lastReport.day}일차)</h3><div class="note">총 ${won(S.lastReport.total)}${S.lastReport.items.map(i=>`<br>${i.name}: ${won(i.amt)}${i.v?` (관람객 ${i.v}명)`:''}`).join('')}</div>`;
+  }
+  el.innerHTML=h;
+}
+function renderInfo(){
+  const el=$('info');let h='';
+  if(S.mode==='build'){
+    if(S.tool==='demolish'){h+='<h3>철거</h3><h4>부재 철거</h4><div class="note">클릭한 부재를 없애고 비용의 50%를 돌려받습니다. 아래 부재를 없애면 위에 얹힌 부재가 함께 무너질 수 있습니다.</div>'}
+    else{const t=ET[S.tool],m=(S.mat==='glass'&&t.cat!=='W')?'concrete':S.mat;const tmp={type:S.tool,mat:m};
+      h+=`<h3>선택한 부재</h3><h4>${t.n} · ${MATS[m].n}</h4><div class="note">${t.d}</div>`;
+      h+=`<div class="kv"><span>비용</span><b>${won(eCost(S.tool,m))}</b></div><div class="kv"><span>자체 무게</span><b>${eWeight(tmp).toFixed(1)} t</b></div><div class="kv"><span>허용 하중</span><b>${(ET[S.tool].c*MATS[m].s).toFixed(1)} t</b></div>`}
+    h+='<h3>구조 상태</h3>';let any=false;
+    for(const p of PLOTS){if(!p.owned)continue;const ps=plotStructure(p.id);if(!ps.n)continue;any=true;
+      h+=`<div class="item" style="margin-bottom:5px"><div class="row sp"><span class="t">${p.name}</span><span class="tag ${ps.max>.8?'bad':'ok'}">최대 ${Math.round(ps.max*100)}%</span></div>${meterHTML(ps.max)}<div class="s">부재 ${ps.n}개 · 경고(80% 초과) ${ps.warn}개${ps.worst?`<br>가장 힘든 부재: ${elemLabel(ps.worst)}`:''}</div></div>`}
+    if(!any)h+='<div class="note">아직 지은 부재가 없습니다.</div>';
+    h+=`<details><summary>하중 계산 방식 (단순화 모델)</summary><div class="note">각 부재는 자기 무게와 위에서 내려온 하중을 받쳐 주는 부재들에 똑같이 나눠 보냅니다. 벽·기둥은 바로 아래 같은 부재나 바닥판·보에, 바닥판은 아래층 벽·기둥 또는 같은 층의 보(자기 칸과 상하좌우 칸)에 얹힙니다. 기초는 땅으로 하중을 보내며, 받는 하중이 허용 하중의 100%를 넘거나 받쳐 주는 부재가 없으면 무너집니다. 실제 구조 설계(모멘트, 처짐, 풍하중, 지진 등)를 단순화한 교육·오락용 계산입니다.</div></details>`;
+  }else if(S.mode==='interior'){
+    const f=S.selFurn&&furn.get(S.selFurn);
+    if(f){h+=`<h3>들고 있는 가구</h3><h4>${f.item?FURN[f.item].n:SPECIES[S.exhibits.find(x=>x.id===f.exId).sp].name+' 골격'}</h4><div class="note">클릭해 내려놓기 · R 회전 · Delete 삭제 · Esc 취소</div>`}
+    else if(S.fTool==='place'){const ex=S.fItem.startsWith('ex:');const it=!ex&&FURN[S.fItem];
+      h+=`<h3>배치할 품목</h3><h4>${ex?'공룡 골격':it.n}</h4>${it?`<div class="kv"><span>가격</span><b>${won(it.cost)}</b></div><div class="kv"><span>무게</span><b>${(it.w*1000).toFixed(0)} kg</b></div>${it.light?'<div class="note">불빛을 내는 조명입니다.</div>':''}${it.museum?'<div class="note">박물관에 놓으면 관람객 매력도가 올라갑니다.</div>':''}`:'<div class="note">골격은 약 3t으로 무겁습니다. 바닥 아래를 벽·기둥으로 충분히 받쳐 주세요.</div>'}`}
+    else h+='<h3>인테리어</h3><div class="note">왼쪽에서 도구를 고르세요.</div>';
+    h+='<h3>요령</h3><div class="note">위층 숨기기를 켜고 작업 층을 바꾸면 각 층의 방을 위에서 내려다보며 꾸밀 수 있습니다. 가구의 무게도 바닥판 하중에 더해집니다.</div>';
+  }else if(S.mode==='exc'){
+    const tip=excTip();const where=inRect(tip.x,tip.z,SITE)?'발굴지':(plotAtXZ(tip.x,tip.z)?plotAtXZ(tip.x,tip.z).name:'일반 지면');
+    h+=`<h3>포크레인 상태</h3><h4>${where}</h4><div class="kv"><span>버킷 적재량</span><b>${Math.round(EXC.load*100)}%</b></div>${meterHTML(EXC.load)}<div class="kv"><span>버킷 끝 높이 (지면 기준)</span><b>${(tip.y-surfaceAt(tip.x,tip.z)).toFixed(2)} m</b></div><div class="kv"><span>지금까지 굴착</span><b>${S.stats.digs}회</b></div>`;
+    h+='<div class="note">카메라는 포크레인을 따라갑니다. 오른쪽 드래그로 보는 방향을 바꾸세요.</div>';
+  }else if(S.mode==='fossil'){
+    const rest=site.bones.filter(b=>!b.collected);const seen=rest.filter(b=>boneExposure(b)>0||b.cells.some(i=>site.top[i]<b.top+.02));
+    h+=`<h3>발굴지 현황</h3><div class="kv"><span>발굴 허가</span><b>${site.permit}번째</b></div><div class="kv"><span>이번 발굴지 수습</span><b>${site.bones.length-rest.length} / ${site.bones.length}점</b></div><div class="kv"><span>지금까지 수습</span><b>${S.stats.found}점</b></div>`;
+    h+='<h3>드러나는 중인 뼈</h3>';
+    if(!seen.length)h+='<div class="note">아직 보이는 뼈가 없습니다. 표토를 걷어 내거나 레이더로 위치를 짐작해 보세요.</div>';
+    for(const b of seen){const e=boneExposure(b);h+=`<div class="item" style="margin-bottom:5px"><div class="row sp"><span class="t">${PART_N[b.part]}로 보이는 뼈</span><span class="tag">${b.cond}%</span></div>${meterHTML(e*.8)}<div class="s">노출 ${Math.round(e*100)}% ${e>=.85?'· 수습 도구로 들어 올리세요':''}</div></div>`}
+    h+='<h3>흙의 층</h3><div class="note">짙은 갈색 표토(0–0.3m) → 갈색 퇴적층 → 밝은 모래층(0.8m 아래)에 화석이 많이 묻혀 있습니다.</div>';
+  }else if(S.mode==='mgmt'){
+    const p=S.selPlot&&plotById(S.selPlot);
+    if(!p){h+='<h3>부지 경영</h3><div class="note">지도에서 부지를 클릭하거나 왼쪽 목록에서 [자세히]를 누르세요.</div>'}
+    else if(!p.owned){h+=`<h3>매물</h3><h4>${p.name}</h4><div class="kv"><span>크기</span><b>${p.w*CELL}×${p.h*CELL} m (${p.w*p.h}칸)</b></div><div class="kv"><span>가격</span><b>${won(p.price)}</b></div><button class="btn primary wide" style="margin-top:10px" data-act="buy" data-v="${p.id}">이 부지 구매</button>`}
+    else{const st=plotStats(p),sc=plotScore(p,st),inc=plotIncome(p);
+      h+=`<h3>소유 부지</h3><h4>${p.name}</h4><div class="kv"><span>건축 평가</span><b>${sc.total} / 100점</b></div>${meterHTML(sc.total/100*.79)}`;
+      h+=`<div class="kv"><span>구조 안전성</span><b>${sc.safety}/30</b></div><div class="kv"><span>완성도(지붕·문·창)</span><b>${sc.comp}/25</b></div><div class="kv"><span>디자인·재료</span><b>${sc.design}/20</b></div><div class="kv"><span>실내 인테리어</span><b>${sc.interior}/25</b></div>`;
+      h+=`<div class="kv"><span>층수 · 기초 면적</span><b>${st.levels}층 · ${st.area}칸</b></div><div class="kv"><span>총 투자비</span><b>${won(st.cost)}</b></div>`;
+      h+='<h3>용도</h3><select data-act="purpose" aria-label="건물 용도">'+Object.entries(PURPOSES).map(([k,v])=>`<option value="${k}" ${p.purpose===k?'selected':''}>${v.n}</option>`).join('')+'</select>';
+      const pu=PURPOSES[p.purpose];
+      if(p.purpose!=='none'){h+='<div style="margin-top:6px">'+pu.req.map(([n,f])=>`<div class="kv"><span>${n}</span><b class="tag ${f(st)?'ok':'bad'}">${f(st)?'충족':'부족'}</b></div>`).join('')+'</div>';
+        h+=`<div class="kv"><span>예상 일일 수익</span><b>${inc.amt?won(inc.amt):'조건 미충족'}</b></div>`;
+        if(pu.museum){h+=`<h3>입장료</h3><div class="row sp"><span>${won(p.ticket)}</span><span class="note" style="margin:0">관람객 ${inc.visitors||0}명/일</span></div><input type="range" min="3000" max="30000" step="1000" value="${p.ticket}" data-act="ticket" aria-label="입장료"><div class="note">입장료가 비싸면 관람객이 줄어듭니다. 골격의 희귀도·완성도·보존 상태와 진열장·전시 조명·벤치·안내판이 매력도를 높입니다.</div>`}}
+      else h+='<div class="note">용도를 정하고 조건을 채우면 매일 수익이 들어옵니다.</div>';
+      h+=`<h3>매각</h3><div class="kv"><span>예상 매각가 (토지 포함)</span><b>${won(salePrice(p))}</b></div><button class="btn danger wide" style="margin-top:8px" data-act="sellAsk" data-v="${p.id}">건물과 토지 매각</button>`;
+    }
+  }
+  el.innerHTML=h;
+}
+function setStatus(t){$('status').innerHTML=t||''}
+
+// ================= 모달 =================
+function openModal(html){$('mcard').innerHTML=html;$('modal').hidden=false}
+function closeModal(){$('modal').hidden=true;S.puz=null}
+function helpModal(){
+  const sv=readSave();
+  openModal(`<h2>조작법</h2><div class="keys" style="margin:10px 0"><span>오른쪽 드래그</span><span>화면 회전</span><span>휠</span><span>확대·축소</span><span>가운데 드래그</span><span>화면 이동</span><span><kbd>1</kbd>–<kbd>5</kbd></span><span>모드 전환</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd></span><span>되돌리기</span><span><kbd>R</kbd></span><span>회전 (계단·경사 지붕·가구)</span><span><kbd>[</kbd> <kbd>]</kbd> PageUp/Down</span><span>작업 층 변경</span><span><kbd>H</kbd></span><span>하중 보기</span><span><kbd>C</kbd></span><span>위층 숨기기</span></div>
+  <h3>저장 데이터</h3><div class="note">저장은 [저장] 버튼을 누를 때만 이 브라우저의 localStorage에 기록됩니다. 외부 서버나 AI로 전송하지 않으며, 브라우저 데이터를 지우면 함께 사라집니다.<br>${sv?`현재 저장본: ${new Date(sv.t).toLocaleString('ko-KR')} · ${sv.day}일차 · ${won(sv.money)}`:'현재 저장본이 없습니다.'}</div>
+  <div class="row" style="margin-top:12px;justify-content:flex-end">${sv?'<button class="btn danger" data-act="wipe">저장 데이터 삭제</button>':''}<button class="btn primary" data-act="close">닫기</button></div>`);
+}
+
+// ================= 골격 조립 퍼즐 =================
+const PUZ_POS={biped:{skull:[560,70],neck:[495,108],spine:[385,112],ribs:[400,165],pelvis:[290,125],foreleg:[470,178],hindleg:[300,222],tail:[135,118]},
+  quad:{skull:[585,150],neck:[525,122],spine:[370,92],ribs:[375,142],pelvis:[250,105],foreleg:[465,215],hindleg:[255,215],tail:[105,135]}};
+function openAssembly(sp){
+  const best={};for(const b of S.bones){if(b.sp!==sp||!b.cleaned)continue;if(!best[b.part]||best[b.part].cond<b.cond)best[b.part]=b}
+  S.puz={sp,best,placed:new Set(),sel:null,order:Object.keys(best).sort(()=>Math.random()-.5)};renderPuzzle();
+}
+function renderPuzzle(){
+  const P=S.puz;const s=SPECIES[P.sp];const L=s.biped?PUZ_POS.biped:PUZ_POS.quad;
+  const sil=s.biped?`<path d="M90 120 Q250 95 330 120 Q420 95 500 105 Q540 60 600 62 Q620 80 590 95 Q540 100 520 120 Q470 150 420 160 L330 170 Q300 160 290 150 Q200 130 90 120 Z" /><path d="M300 150 L320 200 L300 245 L330 245 M450 150 L480 185 L495 190" fill="none" stroke-width="14"/>`
+    :`<path d="M70 140 Q200 110 250 95 Q370 60 470 95 Q510 110 530 125 Q560 135 610 140 Q625 160 595 168 Q550 160 520 150 Q470 165 450 170 L270 165 Q200 150 70 140 Z"/><path d="M265 150 L255 240 M300 150 L290 240 M440 150 L450 240 M470 150 L480 240" fill="none" stroke-width="18"/>`;
+  let spots='';
+  for(const part of PARTS){const [x,y]=L[part];const have=!!P.best[part];const done=P.placed.has(part);
+    if(!have){spots+=`<g><circle cx="${x}" cy="${y}" r="13" fill="none" stroke="var(--ink2)" stroke-dasharray="3 3"/><text x="${x}" y="${y+28}" text-anchor="middle" font-size="11" fill="var(--ink2)">결손</text></g>`;continue}
+    spots+=`<g data-act="spot" data-v="${part}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="17" fill="${done?'#E8A317':'var(--panel-solid)'}" stroke="${done?'#E8A317':'var(--ink)'}" stroke-width="2"/>${done?`<text x="${x}" y="${y+33}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${PART_N[part]}</text>`:`<text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" fill="var(--ink)">?</text>`}</g>`}
+  const cards=P.order.filter(p=>!P.placed.has(p)).map(p=>`<button class="tool" data-act="card" data-v="${p}" aria-pressed="${pr(P.sel===p)}">${PART_N[p]}<span class="c">보존 ${P.best[p].cond}%</span></button>`).join('');
+  const all=P.order.every(p=>P.placed.has(p));
+  openModal(`<div id="puz"><h2>${s.name} 골격 조립</h2><div class="note">뼈 카드를 고른 뒤 실루엣에서 그 뼈가 들어갈 자리(?)를 누르세요. 없는 부위는 결손으로 남고, 완성도가 낮을수록 관람 매력이 줄어듭니다.</div>
+  <svg viewBox="0 0 680 270" role="img" aria-label="공룡 실루엣"><g fill="var(--line)" stroke="var(--line)" stroke-linecap="round" stroke-linejoin="round">${sil}</g>${spots}</svg>
+  <div class="cards">${cards||'<span class="note">모든 뼈를 제자리에 놓았습니다.</span>'}</div>
+  <div class="row" style="justify-content:flex-end"><button class="btn" data-act="close">닫기</button><button class="btn primary" data-act="finishAsm" ${all?'':'disabled'}>조립 완료 → 전시물 등록</button></div></div>`);
+}
+function finishAssembly(){
+  const P=S.puz;const used=P.order.map(p=>P.best[p]);
+  const q=used.reduce((a,b)=>a+b.cond,0)/used.length/100;
+  const ex={id:S.exSeq++,sp:P.sp,parts:P.order.slice(),q,placed:false};S.exhibits.push(ex);
+  S.bones=S.bones.filter(b=>!used.includes(b));closeModal();
+  toast(`${SPECIES[ex.sp].name} 골격 조립 완료! 인테리어 모드 → 전시물에서 박물관에 배치하세요`,'good');onWorldChanged();
+}
+
+// ================= 튜토리얼 =================
+const countType=t=>[...elems.values()].filter(e=>e.type===t).length;
+const countCat=c=>[...elems.values()].filter(e=>ET[e.type].cat===c).length;
+const TUT=[
+  {t:'공사 현장에 오신 것을 환영합니다',b:'빈 땅에서 시작해 직접 집을 짓고, 땅을 파고, 화석을 발굴합니다. 마우스 오른쪽 버튼으로 끌면 화면이 돌고, 휠로 확대·축소, 가운데 버튼으로 이동합니다.',next:true},
+  {t:'기초 놓기',b:'왼쪽 위 파란 테두리가 튜토리얼용으로 드린 연습 부지입니다. [기초]를 고른 채 부지 위를 클릭하거나 끌어서 기초를 4칸 이상 놓아 보세요. 튜토리얼 동안은 비용이 들지 않습니다.',check:()=>countType('foundation')>=4,enter:()=>{setMode('build');S.tool='foundation';focusPlot('A');uiDirty=true}},
+  {t:'벽 세우기',b:'[벽]을 고르고 기초 가장자리 가까이에 마우스를 대면 가장 가까운 모서리에 벽이 붙습니다. 벽을 3개 세워 보세요. 문 벽과 창문 벽도 같은 방법으로 세웁니다.',check:()=>countCat('W')>=3,enter:()=>{S.tool='wall';uiDirty=true}},
+  {t:'2층 바닥판과 하중',b:'▲ 버튼이나 ] 키로 작업 층을 2층으로 올린 뒤 [바닥판]을 벽 바로 위 칸에 놓아 보세요. 미리보기가 초록이면 안전, 노랑·주황이면 아슬아슬, 빨강이면 받침이 없거나 하중 초과로 무너집니다.',check:()=>countType('floor')>=1,enter:()=>{S.tool='floor';uiDirty=true}},
+  {t:'하중 보기',b:'[하중 보기](H 키)를 켜면 부재마다 받는 힘이 색으로 보입니다. 허용 하중의 100%를 넘으면 무너지니, 높이 쌓을 때는 콘크리트·철골처럼 강한 재료와 기둥·보를 쓰세요. 지금 켜 보세요.',check:()=>S.stressView},
+  {t:'인테리어',b:'상단에서 [인테리어] 모드(2)로 바꾸고 가구 하나를 기초나 바닥판 위에 놓아 보세요. R 키로 돌릴 수 있고, 벽 칠하기와 바닥재도 바꿀 수 있습니다.',check:()=>furn.size>=1},
+  {t:'포크레인',b:'[포크레인] 모드(3)에서 W·A·S·D로 움직이고 I·K로 붐, J·L로 암, U·O로 버킷을 조종합니다. 버킷 끝을 땅 가까이 내린 뒤 Space를 눌러 한 번 파 보세요.',check:()=>S.stats.digs>=1},
+  {t:'화석 발굴',b:'[화석 발굴] 모드(4)에서는 흙을 조금씩 걷어 공룡 뼈를 찾습니다. 곡괭이는 빠르지만 뼈를 깨뜨릴 수 있고, 붓은 느리지만 안전합니다. 모드를 열어 발굴지를 살펴보세요.',check:()=>S.mode==='fossil'},
+  {t:'성장과 저장',b:'[경영] 모드(5)에서 새 부지를 사고, 건물의 용도를 정해 매일 수익을 얻거나 매각합니다. 박물관에 조립한 골격을 전시하면 입장료 수익이 들어옵니다. 저장은 [저장] 버튼을 누를 때만 이 브라우저에 기록됩니다.',next:true,last:true},
+];
+function renderTut(){
+  const el=$('tut');if(S.tutorialDone){el.hidden=true;return}const st=TUT[S.tutStep];el.hidden=false;
+  el.innerHTML=`<div class="row sp"><span class="step">튜토리얼 ${S.tutStep+1} / ${TUT.length}</span><button class="btn" data-act="tutSkip" style="padding:2px 8px;font-size:12px">건너뛰기</button></div><h4 style="margin-top:4px">${st.t}</h4><p>${st.b}</p>${st.next?`<button class="btn primary" data-act="tutNext">${st.last?'튜토리얼 마치고 5,000만 원 받기':'다음'}</button>`:'<span class="note">위 과제를 해내면 자동으로 다음 단계로 넘어갑니다.</span>'}`;
+}
+function tutGo(i){S.tutStep=i;const st=TUT[i];if(st&&st.enter)st.enter();renderTut()}
+function tutComplete(){if(S.tutorialDone)return;S.tutorialDone=true;S.money+=5e7;S.dayT=0;renderTut();toast('튜토리얼 완료! 게임 머니 5,000만 원이 지급되었습니다. 경영 모드에서 새 부지를 구매해 보세요','good');onWorldChanged()}
+function tutCheck(){if(S.tutorialDone)return;const st=TUT[S.tutStep];if(st&&st.check&&st.check()){if(S.tutStep<TUT.length-1)tutGo(S.tutStep+1)}}
+
+// ================= 저장 =================
+const SAVE_KEY='hyunjang3d.save.v1';
+function serialize(){
+  const terr=[];for(let k=0;k<terrH.length;k++){const d=terrH[k]-terrH0[k];if(Math.abs(d)>.01)terr.push(k,Math.round(d*100)/100)}
+  return{v:1,t:Date.now(),money:S.money,day:S.day,dayT:S.dayT,tutorialDone:S.tutorialDone,tutStep:S.tutStep,
+    plots:PLOTS.map(p=>({id:p.id,owned:p.owned,purpose:p.purpose,ticket:p.ticket})),elems:[...elems.values()].map(specOfElem),
+    furn:[...furn.values()].map(furnData),furnSeq:S.furnSeq,excavated:[...S.excavated],terr,bones:S.bones,boneSeq:S.boneSeq,
+    exhibits:S.exhibits,exSeq:S.exSeq,stats:S.stats,exc:{x:EXC.pos.x,z:EXC.pos.z,head:EXC.head},site:siteData()};
+}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(serialize()));toast('저장했습니다 — 이 브라우저의 로컬 저장소에만 기록됩니다','good')}catch(e){toast('저장하지 못했습니다. 브라우저 저장소를 쓸 수 없는 환경입니다','bad')}}
+function readSave(){try{const s=localStorage.getItem(SAVE_KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function clearWorld(){
+  for(const e of elems.values())scene.remove(e.mesh);elems.clear();for(const f of furn.values())scene.remove(f.mesh);furn.clear();
+  for(const q of people)scene.remove(q.m);people.length=0;for(const d of debris)scene.remove(d.o);debris.length=0;
+  terrH.set(terrH0);refreshTerrain(0,TER.seg,0,TER.seg);rebuildPickLists();rebuildFurnPick();hideGhost();
+}
+function resetPlots(){for(const p of PLOTS){p.owned=false;p.purpose='none';p.ticket=12000}}
+function newGame(){
+  clearWorld();S=freshState();resetPlots();plotById('A').owned=true;PLOTS.forEach(plotVisual);
+  Object.assign(EXC,{pos:V3(-34,0,-20),head:Math.PI/2,swing:0,boomA:.45,stickA:-1.5,bucketA:-.7,load:0});syncExc();
+  site.permit=0;newSite();checkStructure();
+  $('title').hidden=true;setMode('build');tutGo(0);onWorldChanged();
+}
+function loadGameData(d){
+  clearWorld();S=freshState();resetPlots();
+  for(const q of d.plots){const p=plotById(q.id);if(p){p.owned=q.owned;p.purpose=q.purpose;p.ticket=q.ticket||12000}}
+  PLOTS.forEach(plotVisual);
+  Object.assign(S,{money:d.money,day:d.day,dayT:d.dayT||0,tutorialDone:d.tutorialDone,tutStep:d.tutStep||0,bones:d.bones||[],boneSeq:d.boneSeq||1,exhibits:d.exhibits||[],exSeq:d.exSeq||1,furnSeq:d.furnSeq||1,stats:Object.assign(S.stats,d.stats||{})});
+  S.excavated=new Set(d.excavated||[]);
+  for(let i=0;i<d.terr.length;i+=2)terrH[d.terr[i]]=terrH0[d.terr[i]]+d.terr[i+1];refreshTerrain(0,TER.seg,0,TER.seg);
+  for(const sp of d.elems){if(elems.has(slotKeyOf(sp)))continue;addElem(makeElem(sp))}rebuildPickLists();
+  for(const ex of S.exhibits)ex.placed=false;for(const f of d.furn)restoreFurn(f);
+  Object.assign(EXC,{pos:V3(d.exc.x,0,d.exc.z),head:d.exc.head,load:0});syncExc();
+  if(d.site)loadSite(d.site);else newSite();
+  checkStructure();$('title').hidden=true;setMode('build');renderTut();onWorldChanged();
+  toast(`${new Date(d.t).toLocaleString('ko-KR')}에 저장한 게임을 불러왔습니다`,'good');
+}
+
+// ================= 모드 / 카메라 =================
+let camTween=null;
+function focusOn(target,dist){const off=V3().subVectors(camera.position,controls.target);if(dist)off.setLength(dist);camTween={t:0,ft:controls.target.clone(),tt:target.clone(),fp:camera.position.clone(),tp:target.clone().add(off)}}
+function updateCamTween(dt){if(!camTween)return;camTween.t=Math.min(1,camTween.t+dt*1.6);const k=1-Math.pow(1-camTween.t,3);controls.target.lerpVectors(camTween.ft,camTween.tt,k);camera.position.lerpVectors(camTween.fp,camTween.tp,k);if(camTween.t>=1)camTween=null}
+function focusPlot(id){const p=plotById(id);focusOn(plotCenter(p),Math.max(26,p.w*CELL*1.9))}
+const PLOTS_CENTER=V3(4,0,-10);
+function setMode(m){
+  if(S.mode===m&&m!=='build'&&renderTop)return renderTop();
+  S.mode=m;S.selFurn=null;moving=null;hideGhost();digHeld=false;
+  if(m==='interior')S.cutaway=true;else if(m==='build')S.cutaway=false;updateVisibilityAll();
+  if(m==='fossil')focusOn(V3((SITE.x0+SITE.x1)/2,-.5,(SITE.z0+SITE.z1)/2),16);
+  else if(m==='exc')focusOn(V3(EXC.pos.x,EXC.pos.y+2,EXC.pos.z),22);
+  else if(controls.target.distanceTo(PLOTS_CENTER)>60)focusOn(PLOTS_CENTER,70);
+  gridH.visible=(m==='build');setStatus('');uiDirty=true;renderTop();
+}
+
+// ================= 입력 =================
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let pointerIn=false,ptrDown=null,hoverDirty=false,stroke=null,digHeld=false,digT=0,moving=null;
+const keys={};
+const gridH=new THREE.GridHelper(240,120,0x2f7dd1,0x2f7dd1);gridH.material.transparent=true;gridH.material.opacity=.2;gridH.material.depthWrite=false;scene.add(gridH);
+const ghostMat=new THREE.MeshBasicMaterial({color:0x3fa65a,transparent:true,opacity:.45,depthWrite:false});
+let ghost=null,ghostSig='',hlBox=null;
+function hideGhost(){if(ghost){scene.remove(ghost);ghost=null;ghostSig=''}if(hlBox){scene.remove(hlBox);hlBox=null}}
+function setRay(){ray.setFromCamera(mouse,camera)}
+function rayPlaneY(y){const p=new THREE.Vector3();return ray.ray.intersectPlane(new THREE.Plane(V3(0,1,0),-y),p)?p:null}
+function buildSpecAtPointer(){
+  setRay();const L=S.workLevel,t=S.tool;const p=rayPlaneY(Y(L));if(!p)return null;
+  const cx=Math.floor(p.x/CELL),cz=Math.floor(p.z/CELL);
+  const spec={type:t,mat:S.mat,L,x:cx,z:cz,rot:S.rot};
+  if(ET[t].cat==='W'){const fx=p.x/CELL-cx,fz=p.z/CELL-cz;const d=[fz,1-fz,fx,1-fx];const m=d.indexOf(Math.min(...d));
+    if(m===0){spec.dir='x'}else if(m===1){spec.dir='x';spec.z=cz+1}else if(m===2){spec.dir='z'}else{spec.dir='z';spec.x=cx+1}}
+  spec.key=slotKeyOf(spec);return spec;
+}
+function updateHover(){
+  if(!pointerIn){hideGhost();return}
+  if(S.mode==='build'){
+    if(S.tool==='demolish'){setRay();const h=ray.intersectObjects(pickMeshes,false)[0];if(hlBox){scene.remove(hlBox);hlBox=null}if(ghost){scene.remove(ghost);ghost=null;ghostSig=''}
+      if(h){const e=elems.get(h.object.userData.key);if(e){hlBox=new THREE.BoxHelper(e.mesh,0xd63a24);scene.add(hlBox);const r=S.lastRes&&S.lastRes.get(e);setStatus(`<b>${elemLabel(e)}</b> · 하중 ${r?Math.round(r.ratio*100):0}% · 철거 시 ${won(S.tutorialDone?e.cost*.5:0)} 환급`)}}else setStatus('철거할 부재를 클릭하세요');return}
+    const spec=buildSpecAtPointer();if(!spec){hideGhost();return}
+    const ev=evalPlacement(spec);const sig=spec.key+'|'+spec.type+'|'+spec.rot;
+    if(sig!==ghostSig){if(ghost)scene.remove(ghost);const tmp=makeElemTemp(spec);ghost=buildElemMesh(tmp,ghostMat);scene.add(ghost);ghostSig=sig}
+    ghostMat.color.setHex(!ev.ok||ev.cls==='bad'?0xd63a24:ev.cls==='mid'?0xe6a01f:0x3fa65a);
+    setStatus(`${levelName(spec.L)} ${ET[spec.type].n} · ${ev.msg}`);
+  }else if(S.mode==='interior'){
+    setRay();
+    if(moving||(S.fTool==='place')){
+      const visH=hMeshes.filter(m=>{const e=elems.get(m.userData.key);return e&&e.mesh.visible});
+      const h=ray.intersectObjects(visH,false)[0];const sp=h&&furnSpecFromHit(h);
+      if(moving){const f=furn.get(moving.id);if(f&&sp){f.x=sp.x;f.y=sp.y;f.z=sp.z;positionFurn(f);moving.spec=sp}return}
+      const sig='f|'+S.fItem;
+      if(!sp){if(ghost)ghost.visible=false;setStatus('바닥판이나 기초 윗면을 가리키세요');return}
+      if(sig!==ghostSig){if(ghost)scene.remove(ghost);const fake={id:-1,item:S.fItem.startsWith('ex:')?null:S.fItem,exId:S.fItem.startsWith('ex:')?+S.fItem.slice(3):null,ghost:true};
+        ghost=buildFurnMesh(fake);ghost.traverse(o=>{if(o.isMesh){o.material=ghostMat;o.castShadow=false}if(o.isLight)o.visible=false});scene.add(ghost);ghostSig=sig}
+      ghost.visible=true;ghost.position.set(sp.x,sp.y+.01,sp.z);ghost.rotation.y=S.rot*Math.PI/2;
+      const pl=plotById(sp.plot);ghostMat.color.setHex(pl&&pl.owned?0x3fa65a:0xd63a24);
+      setStatus(`${levelName(sp.L)} 바닥 · 클릭해 배치 · R 회전`);
+    }else{hideGhost();setStatus(S.fTool==='paint'?'칠할 벽이나 기둥을 클릭하세요':S.fTool==='finish'?'바닥재를 깔 기초·바닥판을 클릭하세요':S.fTool==='move'?'옮길 가구를 클릭하세요':'삭제할 가구를 클릭하세요')}
+  }else if(S.mode==='mgmt'){setRay();const p=rayPlaneY(0);const pl=p&&plotAtXZ(p.x,p.z);setStatus(pl?`<b>${pl.name}</b> · ${pl.owned?PURPOSES[pl.purpose].n:'매물 '+won(pl.price)} · 클릭해 자세히 보기`:'부지를 클릭하세요')}
+  else if(S.mode==='fossil'){setRay();const h=ray.intersectObject(site.mesh,false)[0];
+    if(h&&h.instanceId!=null)setStatus(`지표에서 ${(-site.top[h.instanceId]).toFixed(2)} m 깊이 · 도구: ${S.digTool==='collect'?'수습 (드러난 뼈 클릭)':DIGT[S.digTool].n}`);else setStatus('발굴지의 흙을 누르고 있으면 팝니다')}
+}
+function onPrimaryDown(){
+  setRay();
+  if(S.mode==='build'){
+    if(S.tool==='demolish'){const h=ray.intersectObjects(pickMeshes,false)[0];if(h){const e=elems.get(h.object.userData.key);if(e)demolishAt(e)}hoverDirty=true;return}
+    stroke={items:[],warned:false,last:null};strokeStep();
+  }else if(S.mode==='interior'){
+    if(moving){dropMoving();return}
+    if(S.fTool==='place'){const visH=hMeshes.filter(m=>{const e=elems.get(m.userData.key);return e&&e.mesh.visible});const h=ray.intersectObjects(visH,false)[0];const sp=h&&furnSpecFromHit(h);
+      if(sp)placeFurnAt(sp);else toast('바닥판이나 기초 윗면에 놓으세요','bad');hoverDirty=true;return}
+    if(S.fTool==='move'||S.fTool==='delete'){const h=ray.intersectObjects(furnMeshes.filter(m=>{let o=m;while(o.parent&&o.parent!==scene)o=o.parent;return o.visible}),false)[0];
+      if(!h){toast('가구를 클릭하세요');return}const f=furn.get(h.object.userData.furnId);if(!f)return;
+      if(S.fTool==='delete')deleteFurn(f);else{moving={id:f.id,from:{x:f.x,y:f.y,z:f.z,rot:f.rot,floorKey:f.floorKey,L:f.L,plot:f.plot},spec:null};S.selFurn=f.id;uiDirty=true}return}
+    if(S.fTool==='paint'||S.fTool==='finish'){const vis=pickMeshes.filter(m=>{const e=elems.get(m.userData.key);return e&&e.mesh.visible});const h=ray.intersectObjects(vis,false)[0];if(h)paintTarget(h);return}
+  }else if(S.mode==='fossil'){digHeld=true;digT=0;fossilAction(true)}
+  else if(S.mode==='mgmt'){const p=rayPlaneY(0);const pl=p&&plotAtXZ(p.x,p.z);if(pl){S.selPlot=pl.id;uiDirty=true}}
+}
+function strokeStep(){const spec=buildSpecAtPointer();if(!spec||!stroke)return;if(stroke.last===spec.key)return;stroke.last=spec.key;placeElem(spec,stroke);hoverDirty=true}
+function onPrimaryUp(){
+  if(stroke){if(stroke.items.length)pushUndo({kind:'add',items:stroke.items});stroke=null}
+  digHeld=false;
+}
+function dropMoving(){
+  const f=furn.get(moving.id);const sp=moving.spec;
+  if(f&&sp){const pl=plotById(sp.plot);
+    if(!pl||!pl.owned){toast('구매한 부지 위에만 놓을 수 있습니다','bad');return}
+    if(f.exId&&pl.purpose!=='museum'){toast('골격은 박물관 부지에만 놓을 수 있습니다','bad');return}
+    Object.assign(f,{floorKey:sp.floorKey,L:sp.L,plot:sp.plot});pushUndo({kind:'furn-move',id:f.id,from:moving.from})}
+  else if(f){Object.assign(f,moving.from);positionFurn(f)}
+  moving=null;S.selFurn=null;checkStructure();onWorldChanged();
+}
+function cancelMoving(){if(!moving)return;const f=furn.get(moving.id);if(f){Object.assign(f,moving.from);positionFurn(f)}moving=null;S.selFurn=null;uiDirty=true}
+let lastBoneMsg=0;
+function fossilAction(first){
+  setRay();const bm=[];for(const b of site.bones)if(!b.collected)b.mesh.traverse(o=>{if(o.isMesh)bm.push(o)});
+  const h=ray.intersectObjects([site.mesh,...bm],false)[0];if(!h)return;
+  const b=h.object.userData.bone;const tool=S.digTool;
+  if(b){if(tool==='collect'){if(first)tryCollect(b);return}
+    if(tool==='brush'){if(performance.now()-lastBoneMsg>2500){toast('붓으로 뼈 표면의 흙을 털어 냈습니다. 주변 흙을 더 걷어 내세요');lastBoneMsg=performance.now()}siteDigAt(h.point.x,h.point.z,'brush');return}
+    damageBone(b,DIGT[tool].d);onWorldChanged(true);return}
+  if(tool==='collect'){if(first)toast('수습 도구로는 드러난 뼈를 직접 클릭하세요');return}
+  siteDigAt(h.point.x,h.point.z,tool);onWorldChanged(true);hoverDirty=true;
+}
+canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;pointerIn=true;hoverDirty=true;
+  if(ptrDown&&stroke&&S.mode==='build')strokeStep()});
+canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;pointerIn=true;ptrDown={x:e.clientX,y:e.clientY};onPrimaryDown()});
+window.addEventListener('pointerup',e=>{if(e.button!==0)return;if(ptrDown){onPrimaryUp();ptrDown=null}});
+canvas.addEventListener('pointerleave',()=>{pointerIn=false;hideGhost();if(!ptrDown)setStatus('')});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+window.addEventListener('keyup',e=>{keys[e.code]=false;if(S.mode==='exc'&&e.code==='Space')e.preventDefault()});
+window.addEventListener('keydown',e=>{
+  const tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='SELECT'||tg.tagName==='TEXTAREA'))return;
+  if(!$('title').hidden)return;
+  if(!$('modal').hidden){if(e.code==='Escape')closeModal();return}
+  keys[e.code]=true;
+  if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'){e.preventDefault();undo();return}
+  const md={Digit1:'build',Digit2:'interior',Digit3:'exc',Digit4:'fossil',Digit5:'mgmt'}[e.code];if(md){setMode(md);return}
+  if(S.mode==='exc'){if(e.code==='Space'){e.preventDefault();excDig()}if(e.code==='KeyX')excDump();return}
+  if(S.mode==='build'||S.mode==='interior'){
+    if(e.code==='KeyR'){if(moving){const f=furn.get(moving.id);if(f){f.rot+=e.shiftKey?Math.PI/12:Math.PI/2;positionFurn(f)}}else if(S.mode==='interior'&&e.shiftKey){S.rot=(S.rot+1/6)%4}else S.rot=(Math.round(S.rot)+1)%4;ghostSig='';hoverDirty=true;uiDirty=true}
+    if(e.code==='PageUp'||e.code==='BracketRight'){e.preventDefault();changeLevel(1)}
+    if(e.code==='PageDown'||e.code==='BracketLeft'){e.preventDefault();changeLevel(-1)}
+    if(e.code==='KeyC'){S.cutaway=!S.cutaway;updateVisibilityAll();uiDirty=true;hoverDirty=true}
+    if(e.code==='KeyH'&&S.mode==='build'){S.stressView=!S.stressView;refreshStressAll();uiDirty=true}
+    if((e.code==='Delete'||e.code==='Backspace')&&moving){const f=furn.get(moving.id);const from=moving.from;moving=null;if(f){Object.assign(f,from);positionFurn(f);deleteFurn(f)}}
+    if(e.code==='Escape'){cancelMoving();hideGhost()}
+  }
+});
+function changeLevel(d){S.workLevel=clamp(S.workLevel+d,0,MAXL);gridH.position.y=Y(S.workLevel)+.02;updateVisibilityAll();ghostSig='';hoverDirty=true;uiDirty=true}
+
+// ---- 버튼 이벤트 위임 ----
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.tagName==='SELECT'||b.tagName==='INPUT')return;const a=b.dataset.act,v=b.dataset.v;
+  switch(a){
+    case 'mode':setMode(v);break;
+    case 'tool':S.tool=v;hideGhost();uiDirty=true;break;
+    case 'mat':S.mat=v;ghostSig='';uiDirty=true;break;
+    case 'lvl':changeLevel(+v);break;
+    case 'rot':S.rot=(Math.round(S.rot)+1)%4;ghostSig='';uiDirty=true;break;
+    case 'stress':S.stressView=!S.stressView;refreshStressAll();uiDirty=true;break;
+    case 'cutaway':S.cutaway=!S.cutaway;updateVisibilityAll();uiDirty=true;break;
+    case 'undo':undo();break;
+    case 'save':if(!$('title').hidden)return;saveGame();break;
+    case 'loadPrompt':{const sv=readSave();if(!sv){toast('저장된 게임이 없습니다','bad');break}
+      openModal(`<h2>저장한 게임 불러오기</h2><div class="note">${new Date(sv.t).toLocaleString('ko-KR')} · ${sv.day}일차 · ${won(sv.money)}<br>지금 진행 중인 내용 중 저장하지 않은 부분은 사라집니다.</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="close">취소</button><button class="btn primary" data-act="loadGame">불러오기</button></div>`);break}
+    case 'help':helpModal();break;
+    case 'close':closeModal();break;
+    case 'wipe':try{localStorage.removeItem(SAVE_KEY)}catch(_){}closeModal();toast('저장 데이터를 삭제했습니다');break;
+    case 'newGame':newGame();break;
+    case 'loadGame':{const sv=readSave();closeModal();if(sv)try{loadGameData(sv)}catch(err){console.error(err);toast('저장 데이터를 읽지 못했습니다. 새 게임을 시작하세요','bad')}break}
+    case 'tutNext':if(TUT[S.tutStep].last)tutComplete();else tutGo(S.tutStep+1);break;
+    case 'tutSkip':tutComplete();break;
+    case 'ftool':S.fTool=v;cancelMoving();hideGhost();uiDirty=true;break;
+    case 'fcat':S.fCat=v;uiDirty=true;break;
+    case 'fitem':S.fItem=v;ghostSig='';uiDirty=true;break;
+    case 'paint':S.paint=v;uiDirty=true;break;
+    case 'finish':S.finish=v;uiDirty=true;break;
+    case 'excgo':{const to=v==='site'?V3(SITE.x0-5,0,(SITE.z0+SITE.z1)/2):V3(-34,0,-20);EXC.pos.copy(to);EXC.head=v==='site'?0:Math.PI/2;EXC.load=0;syncExc();focusOn(V3(to.x,EXC.pos.y+2,to.z),22);break}
+    case 'dtool':S.digTool=v;uiDirty=true;break;
+    case 'radar':{const c=S.tutorialDone?100000:0;if(c>S.money){toast('자금이 부족합니다','bad');break}S.money-=c;site.radarUntil=performance.now()+6000;setRadar(true);onWorldChanged();break}
+    case 'permit':{const left=site.bones.filter(x=>!x.collected).length;const c=S.tutorialDone?2000000:0;
+      if(left&&!b.dataset.ok){openModal(`<h2>새 발굴 허가</h2><div class="note">아직 수습하지 않은 화석이 ${left}점 남아 있습니다. 새 발굴지를 열면 남은 화석은 다시 묻힙니다. (${won(c)})</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="close">취소</button><button class="btn primary" data-act="permit" data-ok="1">새로 허가받기</button></div>`);break}
+      if(c>S.money){toast('자금이 부족합니다','bad');break}closeModal();S.money-=c;newSite();toast('새 발굴지를 열었습니다. 어떤 공룡이 묻혀 있을까요?','good');onWorldChanged();break}
+    case 'clean':{const x=S.bones.find(q=>q.id===+v);const c=S.tutorialDone?50000:0;if(c>S.money){toast('자금이 부족합니다','bad');break}S.money-=c;x.cleaned=true;toast(`${PART_N[x.part]} 세척 완료`,'good');onWorldChanged();break}
+    case 'restore':{const x=S.bones.find(q=>q.id===+v);const c=S.tutorialDone?400000:0;if(c>S.money){toast('자금이 부족합니다','bad');break}S.money-=c;x.restored=true;x.cond=Math.min(100,x.cond+30);toast(`${PART_N[x.part]} 복원 완료 · 보존 ${x.cond}%`,'good');onWorldChanged();break}
+    case 'assemble':openAssembly(v);break;
+    case 'card':S.puz.sel=v;renderPuzzle();break;
+    case 'spot':{const P=S.puz;if(!P.sel){toast('먼저 아래에서 뼈 카드를 고르세요');break}
+      if(P.sel===v){P.placed.add(v);P.sel=null}else toast(`${PART_N[P.sel]}의 자리가 아닙니다. 몸의 어느 부분에 있는 뼈인지 떠올려 보세요`,'bad');renderPuzzle();break}
+    case 'finishAsm':finishAssembly();break;
+    case 'selPlot':S.selPlot=v;focusPlot(v);uiDirty=true;break;
+    case 'buy':buyPlot(v);break;
+    case 'sellAsk':{const p=plotById(v);openModal(`<h2>${p.name} 매각</h2><div class="note">건물·가구·토지를 모두 넘기고 ${won(salePrice(p))}을(를) 받습니다. 전시 중인 골격은 창고로 돌아옵니다. 되돌릴 수 없습니다.</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="close">취소</button><button class="btn primary" data-act="sell" data-v="${v}">매각하기</button></div>`);break}
+    case 'sell':closeModal();sellPlot(v);break;
+  }
+});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.act==='purpose'){const p=plotById(S.selPlot);p.purpose=t.value;plotVisual(p);
+  if(t.value==='museum')toast('박물관으로 지정했습니다. 인테리어 → 전시물에서 골격을 배치하세요','good');onWorldChanged()}});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.act==='ticket'){const p=plotById(S.selPlot);p.ticket=+t.value;const s=t.closest('#info');if(s){const r=plotIncome(p);const row=t.previousElementSibling;if(row)row.innerHTML=`<span>${won(p.ticket)}</span><span class="note" style="margin:0">관람객 ${r.visitors||0}명/일</span>`}}});
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+
+// ================= 메인 루프 =================
+let lastT=performance.now(),uiT=0,liveT=0,tutT=0;
+function loop(now){
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  updateExc(dt);updateDebris(dt);updateParts(dt);updatePeople(dt);updateCamTween(dt);
+  if(S.mode==='fossil'&&digHeld&&S.digTool!=='collect'){digT+=dt;if(digT>=DIGT[S.digTool].iv){digT=0;fossilAction(false)}}
+  if(site.radarOn&&now>site.radarUntil){setRadar(false);uiDirty=true}
+  if(hoverDirty){hoverDirty=false;updateHover()}
+  if(S.structDirty)checkStructure();
+  if(S.tutorialDone&&$('title').hidden){S.dayT+=dt;if(S.dayT>=30){S.dayT=0;dayTick()}$('dayp').style.width=(S.dayT/30*100)+'%'}
+  uiT+=dt;if(uiDirty&&uiT>.12){uiT=0;uiDirty=false;renderSide();renderInfo();renderTop()}
+  liveT+=dt;if(liveT>.35){liveT=0;if(S.mode==='exc'||S.mode==='fossil')renderInfo();renderTop();}
+  tutT+=dt;if(tutT>.3){tutT=0;tutCheck()}
+  sky.position.copy(camera.position);
+  controls.update();
+  let sx=0,sy=0;if(shake>0){shake=Math.max(0,shake-dt);sx=rnd(-1,1)*shake*.5;sy=rnd(-1,1)*shake*.5;camera.position.x+=sx;camera.position.y+=sy}
+  renderer.render(scene,camera);
+  if(sx||sy){camera.position.x-=sx;camera.position.y-=sy}
+  requestAnimationFrame(loop);
+}
+
+// ================= 시작 =================
+function boot(){
+  resize();initTerrain();initEnvironment();PLOTS.forEach(plotVisual);buildExcavator();initSiteMesh();
+  EXC.pos.set(-34,0,-20);EXC.head=Math.PI/2;syncExc();newSite();gridH.position.y=Y(0)+.02;
+  renderSide();renderInfo();renderTop();
+  const sv=readSave();if(sv){const b=$('loadBtn');b.hidden=false;b.textContent=`저장된 게임 이어하기 (${new Date(sv.t).toLocaleDateString('ko-KR')} · ${sv.day}일차)`}
+  requestAnimationFrame(loop);
+}
+boot();
+
+</script>
+</body>
+</html>
